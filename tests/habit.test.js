@@ -209,4 +209,52 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
       (err) => err instanceof ValidationError && err.statusCode === 400
     );
   });
+
+  it('deve realizar toggle de check-in diário ([RF05])', () => {
+    const habit = service.createHabit({
+      title: 'Caminhar 30 minutos',
+      category: 'Saúde',
+      targetDaysPerWeek: 6,
+    });
+
+    const firstToggle = service.toggleCheckIn(habit.id, '2026-11-06', '2026-11-06');
+    assert.equal(firstToggle.action, 'added');
+    assert.equal(firstToggle.habit.completedToday, true);
+    assert.equal(firstToggle.habit.currentStreak, 1);
+
+    const secondToggle = service.toggleCheckIn(habit.id, '2026-11-06', '2026-11-06');
+    assert.equal(secondToggle.action, 'removed');
+    assert.equal(secondToggle.habit.completedToday, false);
+    assert.equal(secondToggle.habit.currentStreak, 0);
+  });
+
+  it('deve preservar o histórico de check-ins ao editar o hábito ([RF03])', () => {
+    const habit = service.createHabit({ title: 'Escrever diário' });
+    service.toggleCheckIn(habit.id, '2026-11-05', '2026-11-06');
+
+    const updated = service.updateHabit(habit.id, { title: 'Escrever no diário' });
+    assert.deepEqual(updated.completedDates, ['2026-11-05']);
+  });
+
+  it('deve filtrar hábitos por status do dia ([RF02])', () => {
+    const feito = service.createHabit({ title: 'Arrumar a cama' });
+    service.createHabit({ title: 'Estudar SQL' });
+    service.toggleCheckIn(feito.id, '2026-11-06', '2026-11-06');
+
+    const concluidos = service.getAllHabits({ status: 'completed' }, '2026-11-06');
+    assert.deepEqual(concluidos.map((h) => h.title), ['Arrumar a cama']);
+
+    const pendentes = service.getAllHabits({ status: 'pending' }, '2026-11-06');
+    assert.deepEqual(pendentes.map((h) => h.title), ['Estudar SQL']);
+  });
+
+  it('deve rejeitar check-in com data fora do formato YYYY-MM-DD ([RF05], [RF08])', () => {
+    const habit = service.createHabit({ title: 'Dormir cedo' });
+    assert.throws(
+      () => service.toggleCheckIn(habit.id, '06/11/2026'),
+      (err) =>
+        err instanceof ValidationError &&
+        err.message === 'Formato de data inválido. Utilize o padrão YYYY-MM-DD.'
+    );
+  });
 });
