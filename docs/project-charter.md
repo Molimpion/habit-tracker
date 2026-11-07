@@ -1,4 +1,4 @@
-# 📋 Project Charter (Termo de Abertura do Projeto)
+# Project Charter (Termo de Abertura do Projeto)
 
 **Nome do Projeto:** HabitFlow — Sistema de Gerenciamento e Monitoramento de Hábitos Diários  
 **Versão do Documento:** 1.0.0  
