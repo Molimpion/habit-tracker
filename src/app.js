@@ -90,6 +90,20 @@ function createAppServer(customDataFile) {
           const habit = habitService.getHabitById(id);
           return sendJson(res, 200, habit);
         }
+
+        if (req.method === 'PUT') {
+          const body = await parseJsonBody(req);
+          const updated = habitService.updateHabit(id, body);
+          return sendJson(res, 200, updated);
+        }
+
+        if (req.method === 'DELETE') {
+          const deleted = habitService.deleteHabit(id);
+          return sendJson(res, 200, {
+            message: 'Hábito removido com sucesso.',
+            deletedHabit: deleted,
+          });
+        }
       }
 
       if (pathname.startsWith('/api/')) {

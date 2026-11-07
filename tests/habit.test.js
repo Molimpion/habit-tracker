@@ -179,4 +179,34 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
       (err) => err instanceof NotFoundError && err.statusCode === 404
     );
   });
+
+  it('deve editar e excluir um hábito existente ([RF03], [RF04])', () => {
+    const created = service.createHabit({
+      title: 'Ler 10 páginas',
+      category: 'Estudos',
+      targetDaysPerWeek: 4,
+    });
+
+    const updated = service.updateHabit(created.id, {
+      title: 'Ler 25 páginas',
+      targetDaysPerWeek: 7,
+    });
+    assert.equal(updated.title, 'Ler 25 páginas');
+    assert.equal(updated.targetDaysPerWeek, 7);
+    assert.equal(updated.category, 'Estudos');
+
+    service.deleteHabit(created.id);
+    assert.throws(
+      () => service.getHabitById(created.id),
+      (err) => err instanceof NotFoundError && err.statusCode === 404
+    );
+  });
+
+  it('deve rejeitar edição que deixa o título com menos de 3 caracteres ([RF03], [RF08])', () => {
+    const created = service.createHabit({ title: 'Meditar' });
+    assert.throws(
+      () => service.updateHabit(created.id, { title: 'Ok' }),
+      (err) => err instanceof ValidationError && err.statusCode === 400
+    );
+  });
 });
