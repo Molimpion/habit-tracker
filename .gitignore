@@ -27,3 +27,6 @@ Thumbs.db
 coverage/
 dist/
 build/
+
+# Site gerado para o GitHub Pages
+_site/
