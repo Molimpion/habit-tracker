@@ -200,3 +200,4 @@ gitGraph
 - **`v1.1.0`** — *Modo demonstração no GitHub Pages: adapter de armazenamento, roteador da API extraído e deploy automático* (Issues `#45` e `#46`).
 - **`v1.1.1`** — *Patch de documentação: arquitetura e diagramas atualizados* (Issue `#51`).
 - **`v1.1.2`** — *Patch de documentação: remoção de emojis dos documentos de `docs/`* (Issue `#55`).
+- **`v1.2.0`** — *Redesign da interface: tema escuro sóbrio, ícones SVG, check-in acessível e layout responsivo* (Issue `#59`).
