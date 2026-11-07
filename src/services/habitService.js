@@ -1,8 +1,19 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const {
   getTodayISO,
+  calculateStreaks,
 } = require('../utils/streakCalculator');
+
+const VALID_CATEGORIES = [
+  'Saúde',
+  'Estudos',
+  'Produtividade',
+  'Mindfulness',
+  'Finanças',
+  'Outros',
+];
 
 class ValidationError extends Error {
   constructor(message) {
@@ -86,10 +97,66 @@ class HabitService {
     this._ensureStorage();
     fs.writeFileSync(this.dataFile, JSON.stringify(habits, null, 2), 'utf-8');
   }
+
+  _enrichHabit(habit, referenceDate = getTodayISO()) {
+    const { currentStreak, bestStreak, completedToday } = calculateStreaks(
+      habit.completedDates || [],
+      referenceDate
+    );
+    return {
+      ...habit,
+      currentStreak,
+      bestStreak,
+      completedToday,
+    };
+  }
+
+  createHabit(payload, referenceDate = getTodayISO()) {
+    const { title, description = '', category = 'Outros', targetDaysPerWeek = 7 } =
+      payload || {};
+
+    if (!title || typeof title !== 'string' || title.trim().length < 3) {
+      throw new ValidationError(
+        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+      );
+    }
+
+    const parsedTarget = Number(targetDaysPerWeek);
+    if (
+      !Number.isInteger(parsedTarget) ||
+      parsedTarget < 1 ||
+      parsedTarget > 7
+    ) {
+      throw new ValidationError(
+        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+      );
+    }
+
+    const normalizedCategory = VALID_CATEGORIES.includes(category)
+      ? category
+      : 'Outros';
+
+    const newHabit = {
+      id: `hab-${crypto.randomUUID().slice(0, 8)}`,
+      title: title.trim(),
+      description: typeof description === 'string' ? description.trim() : '',
+      category: normalizedCategory,
+      targetDaysPerWeek: parsedTarget,
+      completedDates: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    const habits = this._readRawHabits();
+    habits.push(newHabit);
+    this._writeRawHabits(habits);
+
+    return this._enrichHabit(newHabit, referenceDate);
+  }
 }
 
 module.exports = {
   HabitService,
   ValidationError,
   NotFoundError,
+  VALID_CATEGORIES,
 };
