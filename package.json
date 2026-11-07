@@ -1,6 +1,6 @@
 {
   "name": "habitflow",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "HabitFlow - Sistema de Gerenciamento e Monitoramento de Hábitos Diários (API REST + Dashboard Web)",
   "main": "src/server.js",
   "scripts": {
