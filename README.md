@@ -3,12 +3,19 @@
 [![Versão](https://img.shields.io/github/v/tag/Molimpion/habit-tracker?label=vers%C3%A3o&sort=semver)](https://github.com/Molimpion/habit-tracker/releases)
 [![Licença](https://img.shields.io/github/license/Molimpion/habit-tracker?label=licen%C3%A7a)](./LICENSE)
 [![CI](https://github.com/Molimpion/habit-tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Molimpion/habit-tracker/actions/workflows/ci.yml)
+[![Pages](https://github.com/Molimpion/habit-tracker/actions/workflows/pages.yml/badge.svg?branch=main)](https://molimpion.github.io/habit-tracker/)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-339933.svg)
 ![Git Flow](https://img.shields.io/badge/workflow-Git%20Flow%20%2B%20SemVer-orange.svg)
 
 O **HabitFlow** é uma aplicação web full-stack (API RESTful + Dashboard Interativo) projetada para auxiliar estudantes e profissionais na construção e manutenção de hábitos diários. Ele resolve o problema da falta de visibilidade sobre a consistência pessoal, permitindo cadastrar hábitos por categoria, registrar *check-ins* diários com apenas **1 clique** e acompanhar automaticamente a ofensiva atual (*current streak*), o recorde histórico (*best streak*) e a taxa percentual de metas cumpridas no dia.
 
 Este projeto foi desenvolvido aplicando rigorosamente o **Ciclo de Vida de Desenvolvimento de Software (SDLC)**: desde o Termo de Abertura (*Project Charter*), Engenharia de Requisitos (RF/RNF), Casos de Uso e *User Stories* em BDD/Gherkin até o desdobramento em **15 Issues rastreáveis**, **Git Flow**, **Commits Atômicos (Conventional Commits)** e **Versionamento Semântico (SemVer)**.
+
+## Demonstração Online
+
+**https://molimpion.github.io/habit-tracker/**
+
+O GitHub Pages só serve arquivos estáticos, então a versão publicada roda em **modo demonstração**: o mesmo `HabitService`, o mesmo roteador da API e o mesmo cálculo de *streaks* do backend são carregados no navegador, e um `fetch` substituto encaminha as chamadas `/api/*` para eles. Os dados ficam no `localStorage` de quem acessa, sem servidor. Para usar a API Node com persistência em `data/habits.json`, siga a execução local abaixo.
 
 ---
 
@@ -37,6 +44,7 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 | Cálculo automático de ofensiva atual (*current streak*) e recorde (*best streak*) | `RF06`, `RF07` | Implementado | `v0.2.0` |
 | Dashboard web responsivo com cartões de estatísticas e barra de progresso | `RF07`, `RNF03` | Implementado | `v1.0.0` |
 | Suíte de testes automatizados (unitários e integração HTTP) e CI no GitHub Actions | `RNF05` | Implementado | `v1.0.0` |
+| Modo demonstração no GitHub Pages com dados no `localStorage` do navegador | `RNF03`, `RNF06` | Implementado | `v1.1.0` |
 | Autenticação multiusuário com JWT / OAuth2 | Backlog Futuro | Planejado | `v2.0.0` |
 | Notificações push / lembretes por e-mail e WhatsApp | Backlog Futuro | Planejado | `v2.1.0` |
 | Exportação de relatórios mensais em PDF/CSV | Backlog Futuro | Planejado | `v2.2.0` |
@@ -58,17 +66,29 @@ habit-tracker/
 │   │   ├── index.html
 │   │   ├── styles.css
 │   │   └── app.client.js
+│   ├── api/
+│   │   └── router.js                # Rotas /api/* como função pura (usada pelo servidor e pelo modo demo)
 │   ├── services/
-│   │   └── habitService.js          # Regras de negócio, validações e persistência JSON
+│   │   └── habitService.js          # Regras de negócio e validações (recebe o adapter de armazenamento)
+│   ├── storage/
+│   │   ├── jsonFileStorage.js       # Adapter de armazenamento em data/habits.json (Node)
+│   │   └── localStorageStorage.js   # Adapter de armazenamento no localStorage (navegador)
+│   ├── demo/
+│   │   ├── boot.js                  # Carrega os módulos no navegador e substitui o fetch de /api/*
+│   │   └── demoFetch.js             # Encaminha chamadas /api/* para o roteador
 │   ├── utils/
 │   │   └── streakCalculator.js      # Motor matemático de cálculo de streaks e datas
-│   ├── app.js                       # Roteador e controlador HTTP REST
+│   ├── app.js                       # Servidor HTTP: CORS, leitura do corpo e arquivos estáticos
 │   └── server.js                    # Ponto de entrada da aplicação
+├── scripts/
+│   └── build-pages.sh               # Monta o site do modo demonstração em _site/
 ├── tests/
-│   └── habit.test.js                # Testes automatizados (Unitários + API REST)
+│   ├── habit.test.js                # Testes automatizados (Unitários + API REST)
+│   └── demo.test.js                 # Testes do modo demonstração e do adapter do navegador
 ├── data/
 │   └── .gitkeep                     # Diretório de persistência local (habits.json)
 ├── .github/workflows/ci.yml         # Pipeline de CI (npm test em Node 20 e 22)
+├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 ├── LICENSE                          # Licença MIT
 ├── package.json                     # Manifesto do projeto e scripts npm
@@ -177,3 +197,4 @@ gitGraph
 - **`v1.0.0`** — *Milestone 3: Release Final MVP com Dashboard Web e Testes Automatizados* (Issues `#13` a `#15`).
 - **`v1.0.1`** — *Patch de documentação: remoção de emojis do README* (Issue `#38`).
 - **`v1.0.2`** — *Patch de documentação: correção da referência de issue da v1.0.1* (Issue `#38`).
+- **`v1.1.0`** — *Modo demonstração no GitHub Pages: adapter de armazenamento, roteador da API extraído e deploy automático* (Issues `#45` e `#46`).
