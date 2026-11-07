@@ -66,10 +66,30 @@ function createAppServer(customDataFile) {
         });
       }
 
+      if (pathname === '/api/habits' && req.method === 'GET') {
+        const filters = {
+          category: parsedUrl.searchParams.get('category') || undefined,
+          status: parsedUrl.searchParams.get('status') || undefined,
+          search: parsedUrl.searchParams.get('search') || undefined,
+        };
+        const habits = habitService.getAllHabits(filters);
+        return sendJson(res, 200, habits);
+      }
+
       if (pathname === '/api/habits' && req.method === 'POST') {
         const body = await parseJsonBody(req);
         const created = habitService.createHabit(body);
         return sendJson(res, 201, created);
+      }
+
+      const itemMatch = pathname.match(/^\/api\/habits\/([^/]+)$/);
+      if (itemMatch) {
+        const id = decodeURIComponent(itemMatch[1]);
+
+        if (req.method === 'GET') {
+          const habit = habitService.getHabitById(id);
+          return sendJson(res, 200, habit);
+        }
       }
 
       if (pathname.startsWith('/api/')) {
