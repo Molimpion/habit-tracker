@@ -198,3 +198,4 @@ gitGraph
 - **`v1.0.1`** — *Patch de documentação: remoção de emojis do README* (Issue `#38`).
 - **`v1.0.2`** — *Patch de documentação: correção da referência de issue da v1.0.1* (Issue `#38`).
 - **`v1.1.0`** — *Modo demonstração no GitHub Pages: adapter de armazenamento, roteador da API extraído e deploy automático* (Issues `#45` e `#46`).
+- **`v1.1.1`** — *Patch de documentação: arquitetura e diagramas atualizados* (Issue `#51`).
