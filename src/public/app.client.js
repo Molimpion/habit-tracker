@@ -29,6 +29,7 @@ const elements = {
   categoryFilter: document.getElementById('categoryFilter'),
   statusFilter: document.getElementById('statusFilter'),
   habitsListContainer: document.getElementById('habitsListContainer'),
+  appVersion: document.getElementById('appVersion'),
 };
 
 function showFeedback(message, isError = true) {
@@ -67,13 +68,32 @@ async function fetchDashboardAndHabits() {
   renderHabitsList(habits);
 }
 
+function formatDays(count) {
+  return `${count} ${count === 1 ? 'dia' : 'dias'}`;
+}
+
+function formatLongDate(isoDate) {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function icon(name) {
+  return `<svg class="icon" aria-hidden="true"><use href="#icon-${name}" /></svg>`;
+}
+
 function renderStats(stats) {
-  elements.todayDateDisplay.textContent = `📅 Hoje: ${stats.date}`;
+  elements.todayDateDisplay.textContent = formatLongDate(stats.date);
+  elements.todayDateDisplay.setAttribute('datetime', stats.date);
   elements.statCompletedToday.textContent = `${stats.completedTodayCount} / ${stats.totalHabits}`;
   elements.statProgressBar.style.width = `${stats.completionRateToday}%`;
   elements.statCompletionRate.textContent = `${stats.completionRateToday}%`;
-  elements.statActiveStreak.textContent = `🔥 ${stats.activeBestStreak} dias`;
-  elements.statBestStreak.textContent = `🏆 ${stats.historicalBestStreak} dias`;
+  elements.statActiveStreak.textContent = formatDays(stats.activeBestStreak);
+  elements.statBestStreak.textContent = formatDays(stats.historicalBestStreak);
   elements.statTotalCheckins.textContent = stats.totalCheckIns;
 }
 
@@ -88,48 +108,50 @@ function escapeHtml(str) {
 function renderHabitsList(habits) {
   if (!habits || habits.length === 0) {
     elements.habitsListContainer.innerHTML = `
-      <div class="empty-state">
-        <p>Nenhum hábito encontrado para os filtros selecionados.</p>
-      </div>
+      <li class="empty">Nenhum hábito encontrado para os filtros selecionados.</li>
     `;
     return;
   }
 
   elements.habitsListContainer.innerHTML = habits
-    .map(
-      (habit) => `
-      <article class="habit-card ${habit.completedToday ? 'completed' : ''}" data-id="${escapeHtml(habit.id)}">
-        <div class="habit-info">
-          <div class="habit-top">
-            <span class="habit-title">${escapeHtml(habit.title)}</span>
-            <span class="badge">${escapeHtml(habit.category)}</span>
-            <span class="badge">Meta: ${habit.targetDaysPerWeek}x/sem</span>
-          </div>
-          ${
-            habit.description
-              ? `<p class="habit-desc">${escapeHtml(habit.description)}</p>`
-              : ''
-          }
-          <div class="habit-meta">
-            <span>🔥 Ofensiva atual: <strong>${habit.currentStreak} dias</strong></span>
-            <span>🏆 Recorde: <strong>${habit.bestStreak} dias</strong></span>
-            <span>✅ Total cumprido: ${habit.completedDates.length}d</span>
+    .map((habit) => {
+      const id = escapeHtml(habit.id);
+      const title = escapeHtml(habit.title);
+      const checkLabel = habit.completedToday
+        ? `Desmarcar ${title} como concluído hoje`
+        : `Marcar ${title} como concluído hoje`;
+      return `
+      <li class="habit ${habit.completedToday ? 'done' : ''}" data-id="${id}">
+        <button class="check" data-action="checkin" data-id="${id}" aria-pressed="${habit.completedToday}" aria-label="${checkLabel}">
+          ${icon('check')}
+        </button>
+        <div class="habit-body">
+          <span class="habit-title">${title}</span>
+          <div class="habit-sub">
+            <span class="chip">${escapeHtml(habit.category)}</span>
+            <span>${habit.targetDaysPerWeek}x por semana</span>
+            ${habit.description ? `<span class="habit-desc">${escapeHtml(habit.description)}</span>` : ''}
           </div>
         </div>
-        <div class="habit-actions">
-          <button class="btn-checkin ${habit.completedToday ? 'done' : ''}" data-action="checkin" data-id="${escapeHtml(habit.id)}">
-            ${habit.completedToday ? '✓ Concluído Hoje' : 'Marcar Hoje'}
+        <div class="streaks">
+          <span class="streak ${habit.currentStreak > 0 ? 'active' : ''}" title="Ofensiva atual">
+            ${icon('flame')} ${formatDays(habit.currentStreak)}
+          </span>
+          <span class="streak" title="Recorde (${habit.completedDates.length} check-ins no total)">
+            ${icon('trophy')} ${formatDays(habit.bestStreak)}
+          </span>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn" data-action="edit" data-id="${id}" aria-label="Editar ${title}" title="Editar">
+            ${icon('edit')}
           </button>
-          <button class="btn-icon" data-action="edit" data-id="${escapeHtml(habit.id)}" title="Editar Hábito">
-            Editar
-          </button>
-          <button class="btn-icon delete" data-action="delete" data-id="${escapeHtml(habit.id)}" title="Excluir Hábito">
-            Excluir
+          <button class="icon-btn danger" data-action="delete" data-id="${id}" aria-label="Excluir ${title}" title="Excluir">
+            ${icon('trash')}
           </button>
         </div>
-      </article>
-    `
-    )
+      </li>
+    `;
+    })
     .join('');
 }
 
@@ -137,8 +159,8 @@ function resetFormMode() {
   elements.habitForm.reset();
   elements.habitIdInput.value = '';
   elements.targetDaysInput.value = '5';
-  elements.formHeading.textContent = 'Novo Hábito';
-  elements.submitBtn.textContent = '+ Adicionar Hábito';
+  elements.formHeading.textContent = 'Novo hábito';
+  elements.submitBtn.textContent = 'Adicionar hábito';
   elements.cancelEditBtn.hidden = true;
   clearFeedback();
 }
@@ -198,8 +220,8 @@ elements.habitsListContainer.addEventListener('click', async (e) => {
     elements.descriptionInput.value = habit.description || '';
     elements.categoryInput.value = habit.category;
     elements.targetDaysInput.value = habit.targetDaysPerWeek;
-    elements.formHeading.textContent = 'Editar Hábito';
-    elements.submitBtn.textContent = 'Salvar Alterações';
+    elements.formHeading.textContent = 'Editar hábito';
+    elements.submitBtn.textContent = 'Salvar alterações';
     elements.cancelEditBtn.hidden = false;
     elements.titleInput.focus();
   } else if (action === 'delete') {
@@ -226,4 +248,11 @@ elements.statusFilter.addEventListener('change', (e) => {
   fetchDashboardAndHabits();
 });
 
+async function loadVersion() {
+  const response = await fetch('/api/health');
+  const { version } = await response.json();
+  elements.appVersion.textContent = `v${version}`;
+}
+
 fetchDashboardAndHabits();
+loadVersion();

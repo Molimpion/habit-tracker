@@ -12,7 +12,7 @@ for dir in utils services storage api demo; do
 done
 cp "$ROOT/package.json" "$SITE/lib/package.json"
 
-BANNER='<div class="demo-banner" style="background:#f59e0b;color:#0f172a;text-align:center;padding:8px 16px;font-weight:600;">Modo demonstração: os dados ficam salvos só neste navegador. Para rodar com a API Node, veja o <a href="https://github.com/Molimpion/habit-tracker#readme" style="color:#0f172a;">README</a>.</div>'
+BANNER='<div class="demo-banner">Modo demonstração: os dados ficam salvos só neste navegador. Para rodar com a API Node, veja o <a href="https://github.com/Molimpion/habit-tracker#readme">README</a>.</div>'
 
 sed -i "s|<body>|<body>\n  ${BANNER}|" "$SITE/index.html"
 sed -i 's#<script src="app.client.js"></script>#<script src="lib/demo/boot.js"></script>\n  <script src="app.client.js"></script>#' "$SITE/index.html"
