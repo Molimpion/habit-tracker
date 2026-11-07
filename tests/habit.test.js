@@ -408,6 +408,19 @@ describe('API HTTP — Integração das rotas REST', () => {
 
     const deleteRes = await invokeApi('DELETE', '/api/habits/hab-nao-existe');
     assert.equal(deleteRes.status, 404);
+    assert.equal(deleteRes.json().error, 'Hábito não encontrado.');
+  });
+
+  it('deve excluir um hábito existente via DELETE e deixar de encontrá-lo', async () => {
+    const created = (await invokeApi('POST', '/api/habits', { title: 'Beber água' })).json();
+
+    const deleteRes = await invokeApi('DELETE', `/api/habits/${created.id}`);
+    assert.equal(deleteRes.status, 200);
+    assert.equal(deleteRes.json().deletedHabit.id, created.id);
+
+    const getRes = await invokeApi('GET', `/api/habits/${created.id}`);
+    assert.equal(getRes.status, 404);
+    assert.equal(getRes.json().error, 'Hábito não encontrado.');
   });
 
   it('deve retornar 404 para endpoint de API desconhecido', async () => {
