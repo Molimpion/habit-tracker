@@ -66,6 +66,11 @@ function createAppServer(customDataFile) {
         });
       }
 
+      if (pathname === '/api/habits/stats' && req.method === 'GET') {
+        const stats = habitService.getDashboardStats();
+        return sendJson(res, 200, stats);
+      }
+
       if (pathname === '/api/habits' && req.method === 'GET') {
         const filters = {
           category: parsedUrl.searchParams.get('category') || undefined,

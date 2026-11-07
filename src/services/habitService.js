@@ -306,6 +306,40 @@ class HabitService {
       habit: this._enrichHabit(habit, referenceDate),
     };
   }
+
+  getDashboardStats(referenceDate = getTodayISO()) {
+    const habits = this.getAllHabits({}, referenceDate);
+    const totalHabits = habits.length;
+    const completedTodayCount = habits.filter((h) => h.completedToday).length;
+    const completionRateToday =
+      totalHabits > 0
+        ? Math.round((completedTodayCount / totalHabits) * 100)
+        : 0;
+
+    const activeBestStreak = habits.reduce(
+      (max, h) => Math.max(max, h.currentStreak),
+      0
+    );
+    const historicalBestStreak = habits.reduce(
+      (max, h) => Math.max(max, h.bestStreak),
+      0
+    );
+    const totalCheckIns = habits.reduce(
+      (sum, h) => sum + (h.completedDates ? h.completedDates.length : 0),
+      0
+    );
+
+    return {
+      date: referenceDate,
+      totalHabits,
+      completedTodayCount,
+      pendingTodayCount: totalHabits - completedTodayCount,
+      completionRateToday,
+      activeBestStreak,
+      historicalBestStreak,
+      totalCheckIns,
+    };
+  }
 }
 
 module.exports = {
