@@ -111,6 +111,51 @@ class HabitService {
     };
   }
 
+  getAllHabits(filters = {}, referenceDate = getTodayISO()) {
+    const habits = this._readRawHabits().map((h) =>
+      this._enrichHabit(h, referenceDate)
+    );
+
+    return habits.filter((habit) => {
+      if (
+        filters.category &&
+        filters.category !== 'Todas' &&
+        habit.category.toLowerCase() !== filters.category.toLowerCase()
+      ) {
+        return false;
+      }
+
+      if (filters.status === 'completed' && !habit.completedToday) {
+        return false;
+      }
+      if (filters.status === 'pending' && habit.completedToday) {
+        return false;
+      }
+
+      if (filters.search && filters.search.trim() !== '') {
+        const term = filters.search.trim().toLowerCase();
+        const matchTitle = habit.title.toLowerCase().includes(term);
+        const matchDesc = (habit.description || '')
+          .toLowerCase()
+          .includes(term);
+        if (!matchTitle && !matchDesc) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  getHabitById(id, referenceDate = getTodayISO()) {
+    const habits = this._readRawHabits();
+    const found = habits.find((h) => h.id === id);
+    if (!found) {
+      throw new NotFoundError('Hábito não encontrado.');
+    }
+    return this._enrichHabit(found, referenceDate);
+  }
+
   createHabit(payload, referenceDate = getTodayISO()) {
     const { title, description = '', category = 'Outros', targetDaysPerWeek = 7 } =
       payload || {};

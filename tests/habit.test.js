@@ -11,6 +11,7 @@ const {
 const {
   HabitService,
   ValidationError,
+  NotFoundError,
 } = require('../src/services/habitService');
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
@@ -156,5 +157,26 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
   it('deve usar a categoria Outros quando a categoria informada não existe ([RF01])', () => {
     const habit = service.createHabit({ title: 'Tocar violão', category: 'Música' });
     assert.equal(habit.category, 'Outros');
+  });
+
+  it('deve filtrar hábitos por categoria e por termo de busca ([RF02])', () => {
+    service.createHabit({ title: 'Beber água', category: 'Saúde' });
+    service.createHabit({ title: 'Revisar flashcards', description: 'Inglês', category: 'Estudos' });
+
+    const saude = service.getAllHabits({ category: 'saúde' });
+    assert.deepEqual(saude.map((h) => h.title), ['Beber água']);
+
+    const busca = service.getAllHabits({ search: 'inglês' });
+    assert.deepEqual(busca.map((h) => h.title), ['Revisar flashcards']);
+
+    const todas = service.getAllHabits({ category: 'Todas' });
+    assert.equal(todas.length, 2);
+  });
+
+  it('deve lançar NotFoundError ao buscar um ID inexistente ([RF02])', () => {
+    assert.throws(
+      () => service.getHabitById('hab-inexistente'),
+      (err) => err instanceof NotFoundError && err.statusCode === 404
+    );
   });
 });
