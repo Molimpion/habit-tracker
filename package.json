@@ -1,0 +1,24 @@
+{
+  "name": "habitflow",
+  "version": "0.1.0",
+  "description": "HabitFlow - Sistema de Gerenciamento e Monitoramento de Hábitos Diários (API REST + Dashboard Web)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test tests/habit.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Molimpion/habit-tracker.git"
+  },
+  "keywords": [
+    "habits",
+    "tracker",
+    "nodejs"
+  ],
+  "author": "Manoel Olímpio",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

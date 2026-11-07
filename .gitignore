@@ -1,0 +1,29 @@
+# Dependências Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Banco de dados e dados locais temporários
+data/*.json
+!data/.gitkeep
+*.sqlite
+*.db
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+
+# Sistema Operacional e Editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cobertura de testes e builds
+coverage/
+dist/
+build/
