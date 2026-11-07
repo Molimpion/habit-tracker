@@ -257,4 +257,30 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
         err.message === 'Formato de data inválido. Utilize o padrão YYYY-MM-DD.'
     );
   });
+
+  it('deve consolidar as estatísticas do dia ([RF07])', () => {
+    const feito = service.createHabit({ title: 'Caminhar 30 minutos' });
+    service.createHabit({ title: 'Estudar SQL' });
+    service.createHabit({ title: 'Ler 10 páginas' });
+    service.toggleCheckIn(feito.id, '2026-11-05', '2026-11-06');
+    service.toggleCheckIn(feito.id, '2026-11-06', '2026-11-06');
+
+    const stats = service.getDashboardStats('2026-11-06');
+    assert.deepEqual(stats, {
+      date: '2026-11-06',
+      totalHabits: 3,
+      completedTodayCount: 1,
+      pendingTodayCount: 2,
+      completionRateToday: 33,
+      activeBestStreak: 2,
+      historicalBestStreak: 2,
+      totalCheckIns: 2,
+    });
+  });
+
+  it('deve retornar taxa de conclusão 0 quando não há hábitos ([RF07])', () => {
+    const stats = service.getDashboardStats('2026-11-06');
+    assert.equal(stats.totalHabits, 0);
+    assert.equal(stats.completionRateToday, 0);
+  });
 });
