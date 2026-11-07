@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const {
   getTodayISO,
+  isValidDateFormat,
   calculateStreaks,
 } = require('../utils/streakCalculator');
 
@@ -268,6 +269,42 @@ class HabitService {
     const [removed] = habits.splice(index, 1);
     this._writeRawHabits(habits);
     return removed;
+  }
+
+  toggleCheckIn(id, dateStr = getTodayISO(), referenceDate = getTodayISO()) {
+    if (!isValidDateFormat(dateStr)) {
+      throw new ValidationError(
+        'Formato de data inválido. Utilize o padrão YYYY-MM-DD.'
+      );
+    }
+
+    const habits = this._readRawHabits();
+    const index = habits.findIndex((h) => h.id === id);
+    if (index === -1) {
+      throw new NotFoundError('Hábito não encontrado.');
+    }
+
+    const habit = habits[index];
+    const completedSet = new Set(habit.completedDates || []);
+
+    let action;
+    if (completedSet.has(dateStr)) {
+      completedSet.delete(dateStr);
+      action = 'removed';
+    } else {
+      completedSet.add(dateStr);
+      action = 'added';
+    }
+
+    habit.completedDates = Array.from(completedSet).sort();
+    habits[index] = habit;
+    this._writeRawHabits(habits);
+
+    return {
+      action,
+      date: dateStr,
+      habit: this._enrichHabit(habit, referenceDate),
+    };
   }
 }
 
