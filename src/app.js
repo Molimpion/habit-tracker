@@ -1,7 +1,18 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { URL } = require('url');
 const { HabitService } = require('./services/habitService');
 const { version } = require('../package.json');
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+};
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -42,6 +53,7 @@ function parseJsonBody(req) {
 
 function createAppServer(customDataFile) {
   const habitService = new HabitService(customDataFile);
+  const publicDir = path.join(__dirname, 'public');
 
   const requestListener = async (req, res) => {
     try {
@@ -121,6 +133,20 @@ function createAppServer(customDataFile) {
 
       if (pathname.startsWith('/api/')) {
         return sendJson(res, 404, { error: 'Endpoint da API não encontrado.' });
+      }
+
+      const requestedFile = pathname === '/' ? 'index.html' : pathname.slice(1);
+      const safeFilePath = path.normalize(path.join(publicDir, requestedFile));
+
+      if (!safeFilePath.startsWith(publicDir)) {
+        return sendJson(res, 403, { error: 'Acesso negado.' });
+      }
+
+      if (fs.existsSync(safeFilePath) && fs.statSync(safeFilePath).isFile()) {
+        const ext = path.extname(safeFilePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': contentType });
+        return fs.createReadStream(safeFilePath).pipe(res);
       }
 
       return sendJson(res, 404, { error: 'Recurso não encontrado.' });

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HabitFlow — Gerenciador de Hábitos e Consistência Diária</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">🔥</span>
+        <div>
+          <h1>HabitFlow</h1>
+          <p class="subtitle">Gestão de Hábitos Diários &amp; Rastreamento de Streaks</p>
+        </div>
+      </div>
+      <div class="today-badge" id="todayDateDisplay">Carregando data...</div>
+    </div>
+  </header>
+
+  <main class="container main-layout">
+    <section class="stats-grid" aria-label="Resumo de Progresso">
+      <article class="stat-card">
+        <span class="stat-label">Progresso de Hoje</span>
+        <strong class="stat-value" id="statCompletedToday">0 / 0</strong>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="statProgressBar" style="width: 0%"></div>
+        </div>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Taxa Diária</span>
+        <strong class="stat-value highlight" id="statCompletionRate">0%</strong>
+        <span class="stat-hint">Meta diária cumprida</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Maior Ofensiva Ativa</span>
+        <strong class="stat-value streak-color" id="statActiveStreak">🔥 0 dias</strong>
+        <span class="stat-hint">Sequência contínua atual</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Recorde Histórico</span>
+        <strong class="stat-value" id="statBestStreak">🏆 0 dias</strong>
+        <span class="stat-hint">Total check-ins: <span id="statTotalCheckins">0</span></span>
+      </article>
+    </section>
+
+    <div class="workspace-grid">
+      <aside class="panel form-panel">
+        <h2 id="formHeading">Novo Hábito</h2>
+        <form id="habitForm" novalidate>
+          <input type="hidden" id="habitIdInput" value="" />
+
+          <div class="form-group">
+            <label for="titleInput">Título do Hábito *</label>
+            <input
+              type="text"
+              id="titleInput"
+              placeholder="Ex: Estudar Engenharia de Software"
+              required
+              minlength="3"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="descriptionInput">Descrição / Observação</label>
+            <textarea
+              id="descriptionInput"
+              rows="3"
+              placeholder="Ex: Revisar requisitos, casos de uso e praticar Git Flow..."
+            ></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="categoryInput">Categoria</label>
+              <select id="categoryInput">
+                <option value="Estudos">📚 Estudos</option>
+                <option value="Saúde">💪 Saúde</option>
+                <option value="Produtividade">⚡ Produtividade</option>
+                <option value="Mindfulness">🧘 Mindfulness</option>
+                <option value="Finanças">💰 Finanças</option>
+                <option value="Outros">📌 Outros</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="targetDaysInput">Meta (dias/semana)</label>
+              <input
+                type="number"
+                id="targetDaysInput"
+                min="1"
+                max="7"
+                value="5"
+                required
+              />
+            </div>
+          </div>
+
+          <p id="formFeedback" class="form-feedback" role="alert" hidden></p>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+              + Adicionar Hábito
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              id="cancelEditBtn"
+              hidden
+            >
+              Cancelar Edição
+            </button>
+          </div>
+        </form>
+      </aside>
+
+      <section class="panel list-panel">
+        <div class="list-header">
+          <h2>Meus Hábitos</h2>
+          <div class="filters-bar">
+            <input
+              type="search"
+              id="searchFilter"
+              placeholder="Buscar hábito..."
+              aria-label="Buscar hábito por título"
+            />
+            <select id="categoryFilter" aria-label="Filtrar por categoria">
+              <option value="Todas">Todas as Categorias</option>
+              <option value="Estudos">Estudos</option>
+              <option value="Saúde">Saúde</option>
+              <option value="Produtividade">Produtividade</option>
+              <option value="Mindfulness">Mindfulness</option>
+              <option value="Finanças">Finanças</option>
+              <option value="Outros">Outros</option>
+            </select>
+            <select id="statusFilter" aria-label="Filtrar por status do dia">
+              <option value="all">Todos os Status</option>
+              <option value="completed">Concluídos Hoje</option>
+              <option value="pending">Pendentes Hoje</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="habitsListContainer" class="habits-list">
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>HabitFlow v1.0.0 — Projeto de Engenharia de Software (Especificação, Gestão com Issues e SDLC no GitHub)</p>
+    </div>
+  </footer>
+
+  <script src="app.client.js"></script>
+</body>
+</html>

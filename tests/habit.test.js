@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { Readable } = require('stream');
 
 const {
   calculateStreaks,
@@ -13,6 +14,7 @@ const {
   ValidationError,
   NotFoundError,
 } = require('../src/services/habitService');
+const { createAppServer } = require('../src/app');
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   it('deve retornar streaks zeradas quando não houver check-ins', () => {
@@ -282,5 +284,142 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
     const stats = service.getDashboardStats('2026-11-06');
     assert.equal(stats.totalHabits, 0);
     assert.equal(stats.completionRateToday, 0);
+  });
+});
+
+describe('API HTTP — Integração das rotas REST', () => {
+  let tempFile;
+  let server;
+
+  function invokeApi(method, url, bodyObj = null) {
+    return new Promise((resolve, reject) => {
+      const rawBody = bodyObj ? JSON.stringify(bodyObj) : '';
+      const req = new Readable({
+        read() {
+          if (rawBody) this.push(rawBody);
+          this.push(null);
+        },
+      });
+      req.method = method;
+      req.url = url;
+      req.headers = { host: 'localhost', 'content-type': 'application/json' };
+
+      const res = {
+        statusCode: 200,
+        headers: {},
+        writeHead(status, headers) {
+          this.statusCode = status;
+          this.headers = headers || {};
+        },
+        end(payload) {
+          resolve({
+            status: this.statusCode,
+            json: () => JSON.parse(payload || '{}'),
+          });
+        },
+      };
+
+      server.requestListener(req, res).catch(reject);
+    });
+  }
+
+  beforeEach(() => {
+    tempFile = path.join(
+      os.tmpdir(),
+      `habitflow-api-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
+    );
+    fs.writeFileSync(tempFile, '[]', 'utf-8');
+    server = createAppServer(tempFile);
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+  });
+
+  it('deve responder GET /api/health com status 200 e a versão do package.json', async () => {
+    const res = await invokeApi('GET', '/api/health');
+    assert.equal(res.status, 200);
+    const body = res.json();
+    assert.equal(body.status, 'ok');
+    assert.equal(body.version, require('../package.json').version);
+  });
+
+  it('deve criar, listar e marcar check-in via HTTP REST', async () => {
+    const createRes = await invokeApi('POST', '/api/habits', {
+      title: 'Meditar 10 minutos',
+      category: 'Mindfulness',
+      targetDaysPerWeek: 7,
+    });
+    assert.equal(createRes.status, 201);
+    const created = createRes.json();
+
+    const listRes = await invokeApi('GET', '/api/habits?category=Mindfulness');
+    assert.equal(listRes.status, 200);
+    assert.deepEqual(listRes.json().map((h) => h.id), [created.id]);
+
+    const checkinRes = await invokeApi('POST', `/api/habits/${created.id}/checkin`, {});
+    assert.equal(checkinRes.status, 200);
+    const checkinData = checkinRes.json();
+    assert.equal(checkinData.action, 'added');
+    assert.equal(checkinData.habit.completedToday, true);
+  });
+
+  it('deve retornar 400 com a mensagem de validação quando o título é curto demais', async () => {
+    const res = await invokeApi('POST', '/api/habits', { title: 'Oi' });
+    assert.equal(res.status, 400);
+    assert.equal(
+      res.json().error,
+      'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+    );
+  });
+
+  it('deve retornar 400 quando o corpo da requisição não é JSON válido', async () => {
+    const req = new Readable({
+      read() {
+        this.push('{ invalido');
+        this.push(null);
+      },
+    });
+    req.method = 'POST';
+    req.url = '/api/habits';
+    req.headers = { host: 'localhost' };
+    const result = await new Promise((resolve, reject) => {
+      const res = {
+        writeHead(status) {
+          this.statusCode = status;
+        },
+        end(payload) {
+          resolve({ status: this.statusCode, body: JSON.parse(payload) });
+        },
+      };
+      server.requestListener(req, res).catch(reject);
+    });
+    assert.equal(result.status, 400);
+    assert.equal(result.body.error, 'JSON inválido no corpo da requisição.');
+  });
+
+  it('deve retornar 404 ao editar ou excluir um hábito inexistente', async () => {
+    const putRes = await invokeApi('PUT', '/api/habits/hab-nao-existe', { title: 'Novo título' });
+    assert.equal(putRes.status, 404);
+    assert.equal(putRes.json().error, 'Hábito não encontrado.');
+
+    const deleteRes = await invokeApi('DELETE', '/api/habits/hab-nao-existe');
+    assert.equal(deleteRes.status, 404);
+  });
+
+  it('deve retornar 404 para endpoint de API desconhecido', async () => {
+    const res = await invokeApi('GET', '/api/nao-existe');
+    assert.equal(res.status, 404);
+    assert.equal(res.json().error, 'Endpoint da API não encontrado.');
+  });
+
+  it('deve retornar as estatísticas em GET /api/habits/stats', async () => {
+    await invokeApi('POST', '/api/habits', { title: 'Beber água' });
+    const res = await invokeApi('GET', '/api/habits/stats');
+    assert.equal(res.status, 200);
+    assert.equal(res.json().totalHabits, 1);
+    assert.equal(res.json().completionRateToday, 0);
   });
 });
