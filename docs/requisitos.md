@@ -1,4 +1,4 @@
-# 📐 Especificação de Requisitos do Sistema (RF e RNF)
+# Especificação de Requisitos do Sistema (RF e RNF)
 
 Este documento detalha os **Requisitos Funcionais (RF)** e os **Requisitos Não Funcionais (RNF)** do sistema **HabitFlow**, mantendo rastreabilidade direta com as Histórias de Usuário (`docs/user-stories.md`), Casos de Uso (`docs/casos-de-uso.md`) e o Backlog de Issues do GitHub.
 

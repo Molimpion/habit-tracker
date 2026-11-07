@@ -1,4 +1,4 @@
-# 🏗️ Documentação Complementar de Engenharia: Arquitetura e Diagramas
+# Documentação Complementar de Engenharia: Arquitetura e Diagramas
 
 Este documento apresenta a modelagem arquitetural (C4 Model — Nível de Containers e Componentes), o Diagrama de Classes / Modelo de Dados, o fluxo de estados de *streaks* e a especificação da API REST do sistema **HabitFlow**.
 
