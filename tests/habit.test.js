@@ -1,10 +1,16 @@
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 const {
   calculateStreaks,
   isValidDateFormat,
 } = require('../src/utils/streakCalculator');
+const {
+  HabitService,
+} = require('../src/services/habitService');
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   it('deve retornar streaks zeradas quando não houver check-ins', () => {
@@ -50,5 +56,36 @@ describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
     assert.equal(isValidDateFormat('2026-11-06'), true);
     assert.equal(isValidDateFormat('06-11-2026'), false);
     assert.equal(isValidDateFormat('2026-02-31'), false);
+  });
+});
+
+describe('HabitService — Persistência em JSON ([RNF02])', () => {
+  let tempDir;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'habitflow-storage-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('deve criar o diretório e o arquivo com 3 hábitos de exemplo quando ainda não existem', () => {
+    const dataFile = path.join(tempDir, 'nested', 'habits.json');
+    new HabitService(dataFile);
+
+    const saved = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
+    assert.deepEqual(
+      saved.map((h) => h.id),
+      ['hab-01-eng-software', 'hab-02-hidratacao', 'hab-03-leitura']
+    );
+  });
+
+  it('não deve sobrescrever um arquivo de dados já existente', () => {
+    const dataFile = path.join(tempDir, 'habits.json');
+    fs.writeFileSync(dataFile, '[]', 'utf-8');
+    new HabitService(dataFile);
+
+    assert.equal(fs.readFileSync(dataFile, 'utf-8'), '[]');
   });
 });
