@@ -1,4 +1,4 @@
-# 🔥 HabitFlow — Gerenciador de Hábitos e Consistência Diária
+# HabitFlow — Gerenciador de Hábitos e Consistência Diária
 
 [![Versão](https://img.shields.io/github/v/tag/Molimpion/habit-tracker?label=vers%C3%A3o&sort=semver)](https://github.com/Molimpion/habit-tracker/releases)
 [![Licença](https://img.shields.io/github/license/Molimpion/habit-tracker?label=licen%C3%A7a)](./LICENSE)
@@ -12,7 +12,7 @@ Este projeto foi desenvolvido aplicando rigorosamente o **Ciclo de Vida de Desen
 
 ---
 
-## 📚 Documentação de Engenharia (`docs/`)
+## Documentação de Engenharia (`docs/`)
 
 Todos os artefatos formais de especificação e modelagem encontram-se na pasta `docs/`:
 
@@ -26,24 +26,24 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 
 ---
 
-## ✅ Sumário de Funcionalidades: Implementadas vs. Planejadas
+## Sumário de Funcionalidades: Implementadas vs. Planejadas
 
 | Funcionalidade | Requisito | Status | Versão |
 | :--- | :---: | :---: | :---: |
-| Cadastro de hábitos com validação de título, categoria e meta semanal | `RF01`, `RF08` | ✅ Implementado | `v0.2.0` |
-| Listagem e filtragem dinâmica por categoria, status do dia e busca textual | `RF02` | ✅ Implementado | `v0.2.0` |
-| Edição de hábitos existentes preservando histórico e exclusão permanente | `RF03`, `RF04` | ✅ Implementado | `v0.2.0` |
-| Registro de *check-in* diário (*toggle* concluído/pendente por data ISO) | `RF05` | ✅ Implementado | `v0.2.0` |
-| Cálculo automático de ofensiva atual (*current streak*) e recorde (*best streak*) | `RF06`, `RF07` | ✅ Implementado | `v0.2.0` |
-| Dashboard web responsivo com cartões de estatísticas e barra de progresso | `RF07`, `RNF03` | ✅ Implementado | `v1.0.0` |
-| Suíte de testes automatizados (unitários e integração HTTP) e CI no GitHub Actions | `RNF05` | ✅ Implementado | `v1.0.0` |
-| Autenticação multiusuário com JWT / OAuth2 | Backlog Futuro | 🗓️ Planejado | `v2.0.0` |
-| Notificações push / lembretes por e-mail e WhatsApp | Backlog Futuro | 🗓️ Planejado | `v2.1.0` |
-| Exportação de relatórios mensais em PDF/CSV | Backlog Futuro | 🗓️ Planejado | `v2.2.0` |
+| Cadastro de hábitos com validação de título, categoria e meta semanal | `RF01`, `RF08` | Implementado | `v0.2.0` |
+| Listagem e filtragem dinâmica por categoria, status do dia e busca textual | `RF02` | Implementado | `v0.2.0` |
+| Edição de hábitos existentes preservando histórico e exclusão permanente | `RF03`, `RF04` | Implementado | `v0.2.0` |
+| Registro de *check-in* diário (*toggle* concluído/pendente por data ISO) | `RF05` | Implementado | `v0.2.0` |
+| Cálculo automático de ofensiva atual (*current streak*) e recorde (*best streak*) | `RF06`, `RF07` | Implementado | `v0.2.0` |
+| Dashboard web responsivo com cartões de estatísticas e barra de progresso | `RF07`, `RNF03` | Implementado | `v1.0.0` |
+| Suíte de testes automatizados (unitários e integração HTTP) e CI no GitHub Actions | `RNF05` | Implementado | `v1.0.0` |
+| Autenticação multiusuário com JWT / OAuth2 | Backlog Futuro | Planejado | `v2.0.0` |
+| Notificações push / lembretes por e-mail e WhatsApp | Backlog Futuro | Planejado | `v2.1.0` |
+| Exportação de relatórios mensais em PDF/CSV | Backlog Futuro | Planejado | `v2.2.0` |
 
 ---
 
-## 📦 Estrutura do Repositório
+## Estrutura do Repositório
 
 ```text
 habit-tracker/
@@ -77,13 +77,13 @@ habit-tracker/
 
 ---
 
-## 🚀 Configuração de Ambiente, Instalação e Execução Local
+## Configuração de Ambiente, Instalação e Execução Local
 
 ### Pré-requisitos
 - **Node.js** versão `18.0.0` ou superior instalado ([https://nodejs.org/](https://nodejs.org/)).
 - **Git** instalado.
 
-> 💡 **Portabilidade Total (`RNF06`):** O projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:test`). Não há dependências npm nem banco de dados externo, então não é preciso rodar `npm install`.
+> **Portabilidade Total (`RNF06`):** O projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:test`). Não há dependências npm nem banco de dados externo, então não é preciso rodar `npm install`.
 
 ### Passo a Passo
 
@@ -110,7 +110,7 @@ habit-tracker/
 
 ---
 
-## 🌿 Fluxo de Branches Adotado (Git Flow) e Versionamento Semântico
+## Fluxo de Branches Adotado (Git Flow) e Versionamento Semântico
 
 O desenvolvimento segue o modelo **Git Flow** combinado com **Conventional Commits** e **SemVer**. Nenhum commit é feito direto em `main` ou `develop`: toda mudança entra por **Pull Request** que referencia a issue (`Closes #N`).
 
@@ -175,3 +175,4 @@ gitGraph
 - **`v0.1.0`** — *Milestone 1: Especificação e Documentação de Engenharia Completa* (Issues `#1` a `#6`).
 - **`v0.2.0`** — *Milestone 2: Core Backend API REST, Persistência e Cálculo de Streaks* (Issues `#7` a `#12`).
 - **`v1.0.0`** — *Milestone 3: Release Final MVP com Dashboard Web e Testes Automatizados* (Issues `#13` a `#15`).
+- **`v1.0.1`** — *Patch de documentação: remoção de emojis do README* (Issue `#37`).
