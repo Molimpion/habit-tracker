@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const {
   getTodayISO,
@@ -33,25 +31,14 @@ class NotFoundError extends Error {
 }
 
 class HabitService {
-  constructor(customDataFile) {
-    this.dataFile =
-      customDataFile ||
-      path.join(__dirname, '..', '..', 'data', 'habits.json');
+  constructor(storage) {
+    this.storage = storage;
     this._ensureStorage();
   }
 
   _ensureStorage() {
-    const dir = path.dirname(this.dataFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    if (!fs.existsSync(this.dataFile)) {
-      const initialSeed = this._createSeedData();
-      fs.writeFileSync(
-        this.dataFile,
-        JSON.stringify(initialSeed, null, 2),
-        'utf-8'
-      );
+    if (this.storage.load() === null) {
+      this.storage.save(this._createSeedData());
     }
   }
 
@@ -90,13 +77,11 @@ class HabitService {
 
   _readRawHabits() {
     this._ensureStorage();
-    const content = fs.readFileSync(this.dataFile, 'utf-8');
-    return JSON.parse(content || '[]');
+    return this.storage.load();
   }
 
   _writeRawHabits(habits) {
-    this._ensureStorage();
-    fs.writeFileSync(this.dataFile, JSON.stringify(habits, null, 2), 'utf-8');
+    this.storage.save(habits);
   }
 
   _enrichHabit(habit, referenceDate = getTodayISO()) {

@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const { HabitService } = require('./services/habitService');
+const { JsonFileStorage } = require('./storage/jsonFileStorage');
 const { version } = require('../package.json');
+
+const DEFAULT_DATA_FILE = path.join(__dirname, '..', 'data', 'habits.json');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -52,7 +55,9 @@ function parseJsonBody(req) {
 }
 
 function createAppServer(customDataFile) {
-  const habitService = new HabitService(customDataFile);
+  const habitService = new HabitService(
+    new JsonFileStorage(customDataFile || DEFAULT_DATA_FILE)
+  );
   const publicDir = path.join(__dirname, 'public');
 
   const requestListener = async (req, res) => {

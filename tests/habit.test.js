@@ -14,6 +14,7 @@ const {
   ValidationError,
   NotFoundError,
 } = require('../src/services/habitService');
+const { JsonFileStorage } = require('../src/storage/jsonFileStorage');
 const { createAppServer } = require('../src/app');
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
@@ -76,7 +77,7 @@ describe('HabitService — Persistência em JSON ([RNF02])', () => {
 
   it('deve criar o diretório e o arquivo com 3 hábitos de exemplo quando ainda não existem', () => {
     const dataFile = path.join(tempDir, 'nested', 'habits.json');
-    new HabitService(dataFile);
+    new HabitService(new JsonFileStorage(dataFile));
 
     const saved = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
     assert.deepEqual(
@@ -88,7 +89,7 @@ describe('HabitService — Persistência em JSON ([RNF02])', () => {
   it('não deve sobrescrever um arquivo de dados já existente', () => {
     const dataFile = path.join(tempDir, 'habits.json');
     fs.writeFileSync(dataFile, '[]', 'utf-8');
-    new HabitService(dataFile);
+    new HabitService(new JsonFileStorage(dataFile));
 
     assert.equal(fs.readFileSync(dataFile, 'utf-8'), '[]');
   });
@@ -104,7 +105,7 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
       `habitflow-test-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
     );
     fs.writeFileSync(tempFile, '[]', 'utf-8');
-    service = new HabitService(tempFile);
+    service = new HabitService(new JsonFileStorage(tempFile));
   });
 
   afterEach(() => {
