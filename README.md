@@ -175,4 +175,5 @@ gitGraph
 - **`v0.1.0`** — *Milestone 1: Especificação e Documentação de Engenharia Completa* (Issues `#1` a `#6`).
 - **`v0.2.0`** — *Milestone 2: Core Backend API REST, Persistência e Cálculo de Streaks* (Issues `#7` a `#12`).
 - **`v1.0.0`** — *Milestone 3: Release Final MVP com Dashboard Web e Testes Automatizados* (Issues `#13` a `#15`).
-- **`v1.0.1`** — *Patch de documentação: remoção de emojis do README* (Issue `#37`).
+- **`v1.0.1`** — *Patch de documentação: remoção de emojis do README* (Issue `#38`).
+- **`v1.0.2`** — *Patch de documentação: correção da referência de issue da v1.0.1* (Issue `#38`).
