@@ -197,6 +197,78 @@ class HabitService {
 
     return this._enrichHabit(newHabit, referenceDate);
   }
+
+  updateHabit(id, payload, referenceDate = getTodayISO()) {
+    const habits = this._readRawHabits();
+    const index = habits.findIndex((h) => h.id === id);
+    if (index === -1) {
+      throw new NotFoundError('Hábito não encontrado.');
+    }
+
+    const current = habits[index];
+    const updatedTitle =
+      payload.title !== undefined ? payload.title : current.title;
+
+    if (
+      !updatedTitle ||
+      typeof updatedTitle !== 'string' ||
+      updatedTitle.trim().length < 3
+    ) {
+      throw new ValidationError(
+        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+      );
+    }
+
+    const updatedTarget =
+      payload.targetDaysPerWeek !== undefined
+        ? Number(payload.targetDaysPerWeek)
+        : current.targetDaysPerWeek;
+
+    if (
+      !Number.isInteger(updatedTarget) ||
+      updatedTarget < 1 ||
+      updatedTarget > 7
+    ) {
+      throw new ValidationError(
+        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+      );
+    }
+
+    const updatedCategory =
+      payload.category !== undefined
+        ? VALID_CATEGORIES.includes(payload.category)
+          ? payload.category
+          : current.category
+        : current.category;
+
+    const updatedHabit = {
+      ...current,
+      title: updatedTitle.trim(),
+      description:
+        payload.description !== undefined
+          ? String(payload.description).trim()
+          : current.description,
+      category: updatedCategory,
+      targetDaysPerWeek: updatedTarget,
+    };
+
+    habits[index] = updatedHabit;
+    this._writeRawHabits(habits);
+
+    return this._enrichHabit(updatedHabit, referenceDate);
+  }
+
+  deleteHabit(id) {
+    const habits = this._readRawHabits();
+    const index = habits.findIndex((h) => h.id === id);
+    if (index === -1) {
+      throw new NotFoundError('Hábito não encontrado.');
+    }
+
+    const [removed] = habits.splice(index, 1);
+    this._writeRawHabits(habits);
+    return removed;
+  }
 }
 
 module.exports = {
