@@ -10,6 +10,7 @@ const {
 } = require('../src/utils/streakCalculator');
 const {
   HabitService,
+  ValidationError,
 } = require('../src/services/habitService');
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
@@ -87,5 +88,73 @@ describe('HabitService — Persistência em JSON ([RNF02])', () => {
     new HabitService(dataFile);
 
     assert.equal(fs.readFileSync(dataFile, 'utf-8'), '[]');
+  });
+});
+
+describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () => {
+  let tempFile;
+  let service;
+
+  beforeEach(() => {
+    tempFile = path.join(
+      os.tmpdir(),
+      `habitflow-test-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
+    );
+    fs.writeFileSync(tempFile, '[]', 'utf-8');
+    service = new HabitService(tempFile);
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+  });
+
+  it('deve cadastrar um novo hábito válido ([RF01])', () => {
+    const habit = service.createHabit(
+      {
+        title: 'Praticar TDD com Node.js',
+        description: 'Escrever testes antes do código',
+        category: 'Estudos',
+        targetDaysPerWeek: 5,
+      },
+      '2026-11-06'
+    );
+
+    assert.ok(habit.id.startsWith('hab-'));
+    assert.equal(habit.title, 'Praticar TDD com Node.js');
+    assert.equal(habit.category, 'Estudos');
+    assert.equal(habit.targetDaysPerWeek, 5);
+    assert.equal(habit.currentStreak, 0);
+  });
+
+  it('deve manter o hábito cadastrado ao recarregar o serviço a partir do arquivo ([RNF02])', () => {
+    const created = service.createHabit({ title: 'Alongar pela manhã' });
+    const reloaded = JSON.parse(fs.readFileSync(tempFile, 'utf-8'));
+    assert.deepEqual(reloaded.map((h) => h.id), [created.id]);
+  });
+
+  it('deve rejeitar hábito com título menor que 3 caracteres ([RF08])', () => {
+    assert.throws(
+      () => service.createHabit({ title: 'Oi' }),
+      (err) =>
+        err instanceof ValidationError &&
+        err.statusCode === 400 &&
+        err.message === 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+    );
+  });
+
+  it('deve rejeitar meta semanal fora do intervalo de 1 a 7 ([RF08])', () => {
+    assert.throws(
+      () => service.createHabit({ title: 'Correr', targetDaysPerWeek: 8 }),
+      (err) =>
+        err instanceof ValidationError &&
+        err.message === 'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+    );
+  });
+
+  it('deve usar a categoria Outros quando a categoria informada não existe ([RF01])', () => {
+    const habit = service.createHabit({ title: 'Tocar violão', category: 'Música' });
+    assert.equal(habit.category, 'Outros');
   });
 });
