@@ -1,4 +1,4 @@
-# 🎭 Especificação de Casos de Uso (Use Cases)
+# Especificação de Casos de Uso (Use Cases)
 
 Este documento descreve os atores e especifica detalhadamente os fluxos principais, alternativos e de exceção para as operações centrais do sistema **HabitFlow**.
 
@@ -17,7 +17,7 @@ Este documento descreve os atores e especifica detalhadamente os fluxos principa
 
 ```mermaid
 flowchart LR
-    User(["👤 Usuário"])
+    User(["Usuário"])
     
     subgraph HabitFlow ["Sistema HabitFlow"]
         UC01(["UC01 - Cadastrar Hábito"])

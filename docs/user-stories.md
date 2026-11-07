@@ -1,4 +1,4 @@
-# 📖 Histórias de Usuário (User Stories) e Critérios de Aceite
+# Histórias de Usuário (User Stories) e Critérios de Aceite
 
 As Histórias de Usuário abaixo foram elaboradas seguindo o formato canônico ágil (**"Como [ator], quero [ação] para que [valor de negócio]"**) e acompanhadas de **Critérios de Aceite explícitos no padrão BDD / Gherkin** (*Dado / Quando / Então*).
 
