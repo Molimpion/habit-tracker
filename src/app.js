@@ -82,6 +82,14 @@ function createAppServer(customDataFile) {
         return sendJson(res, 201, created);
       }
 
+      const checkinMatch = pathname.match(/^\/api\/habits\/([^/]+)\/checkin$/);
+      if (checkinMatch && req.method === 'POST') {
+        const id = decodeURIComponent(checkinMatch[1]);
+        const body = await parseJsonBody(req);
+        const result = habitService.toggleCheckIn(id, body.date);
+        return sendJson(res, 200, result);
+      }
+
       const itemMatch = pathname.match(/^\/api\/habits\/([^/]+)$/);
       if (itemMatch) {
         const id = decodeURIComponent(itemMatch[1]);
