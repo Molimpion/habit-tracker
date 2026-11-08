@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test tests/habit.test.js tests/demo.test.js"
+    "test": "node --test tests/habit.test.js tests/demo.test.js",
+    "lint": "eslint .",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,9 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0"
   }
 }

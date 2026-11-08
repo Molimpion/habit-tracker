@@ -7,7 +7,7 @@ function parseJsonText(raw) {
   }
   try {
     return JSON.parse(raw);
-  } catch (err) {
+  } catch {
     const syntaxError = new Error('JSON inválido no corpo da requisição.');
     syntaxError.statusCode = 400;
     throw syntaxError;

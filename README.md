@@ -87,9 +87,11 @@ habit-tracker/
 │   └── demo.test.js                 # Testes do modo demonstração e do adapter do navegador
 ├── data/
 │   └── .gitkeep                     # Diretório de persistência local (habits.json)
-├── .github/workflows/ci.yml         # Pipeline de CI (npm test em Node 20 e 22)
+├── .githooks/pre-commit            # Lint e testes antes de cada commit (ativado pelo npm install)
+├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes em Node 20 e 22)
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
+├── eslint.config.js                 # Regras do ESLint (Node e navegador)
 ├── LICENSE                          # Licença MIT
 ├── package.json                     # Manifesto do projeto e scripts npm
 └── README.md                        # Documentação principal e guia do projeto
@@ -103,7 +105,7 @@ habit-tracker/
 - **Node.js** versão `18.0.0` ou superior instalado ([https://nodejs.org/](https://nodejs.org/)).
 - **Git** instalado.
 
-> **Portabilidade Total (`RNF06`):** O projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:test`). Não há dependências npm nem banco de dados externo, então não é preciso rodar `npm install`.
+> **Portabilidade Total (`RNF06`):** Em execução, o projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:test`), sem dependências npm nem banco de dados externo. A única dependência é o ESLint, de desenvolvimento, usado no lint e no hook de pre-commit.
 
 ### Passo a Passo
 
@@ -113,17 +115,23 @@ habit-tracker/
    cd habit-tracker
    ```
 
-2. **Execute a suíte de testes automatizados:**
+2. **Instale as dependências de desenvolvimento** (também ativa o hook de pre-commit em `.githooks/`, que roda lint e testes antes de cada commit):
    ```bash
+   npm install
+   ```
+
+3. **Execute o lint e a suíte de testes automatizados:**
+   ```bash
+   npm run lint
    npm test
    ```
 
-3. **Inicie o servidor da aplicação:**
+4. **Inicie o servidor da aplicação:**
    ```bash
    npm start
    ```
 
-4. **Acesse no navegador:**
+5. **Acesse no navegador:**
    - **Dashboard Web Interativo:** `http://localhost:3000`
    - **Healthcheck da API:** `http://localhost:3000/api/health`
    - **Estatísticas JSON:** `http://localhost:3000/api/habits/stats`
