@@ -95,13 +95,17 @@ function createAppServer({ databaseFile, jwtSecret }) {
       }
 
       if (pathname.startsWith('/api/')) {
-        const { status, payload } = await handleApiRequest({
+        const { status, payload, headers, body } = await handleApiRequest({
           method: req.method,
           pathname,
           searchParams: parsedUrl.searchParams,
           readBody: () => parseJsonBody(req),
           userId: authService.authenticate(req.headers.authorization),
         });
+        if (body !== undefined) {
+          res.writeHead(status, headers);
+          return res.end(body);
+        }
         return sendJson(res, status, payload);
       }
 

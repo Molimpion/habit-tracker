@@ -587,3 +587,133 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
     });
   });
 });
+
+describe('Exportação mensal em CSV ([EXP-220])', () => {
+  let tempFile;
+  let store;
+  let service;
+  let handleApiRequest;
+
+  function insertHabit(id, title, createdAt) {
+    store.insert({
+      id,
+      title,
+      description: '',
+      category: 'Outros',
+      targetDaysPerWeek: 7,
+      createdAt,
+    });
+  }
+
+  beforeEach(() => {
+    tempFile = tempDatabaseFile('csv');
+    store = createUserStore(tempFile);
+    service = new HabitService(store);
+    handleApiRequest = createApiRouter({ habitServiceFor: () => service, version: 'test' });
+  });
+
+  afterEach(() => {
+    removeDatabase(tempFile);
+  });
+
+  it('gera uma linha por hábito por dia, da criação até a data de referência', () => {
+    insertHabit('hab-a', 'Correr', new Date(2026, 10, 3, 12).toISOString());
+    insertHabit('hab-b', 'Ler', new Date(2026, 10, 4, 12).toISOString());
+    store.addCheckIn('hab-a', '2026-11-04');
+
+    assert.deepEqual(service.getMonthlyReport('2026-11', '2026-11-05'), [
+      { date: '2026-11-03', habit: 'Correr', status: 'pendente' },
+      { date: '2026-11-04', habit: 'Correr', status: 'feito' },
+      { date: '2026-11-04', habit: 'Ler', status: 'pendente' },
+      { date: '2026-11-05', habit: 'Correr', status: 'pendente' },
+      { date: '2026-11-05', habit: 'Ler', status: 'pendente' },
+    ]);
+  });
+
+  it('começa no check-in mais antigo quando ele é anterior à criação do hábito', () => {
+    insertHabit('hab-a', 'Correr', new Date(2026, 10, 3, 12).toISOString());
+    store.addCheckIn('hab-a', '2026-11-01');
+
+    assert.deepEqual(service.getMonthlyReport('2026-11', '2026-11-02'), [
+      { date: '2026-11-01', habit: 'Correr', status: 'feito' },
+      { date: '2026-11-02', habit: 'Correr', status: 'pendente' },
+    ]);
+  });
+
+  it('cobre o mês inteiro quando ele já terminou', () => {
+    insertHabit('hab-a', 'Correr', new Date(2026, 0, 15, 12).toISOString());
+    const report = service.getMonthlyReport('2026-02', '2026-11-07');
+    assert.equal(report.length, 28);
+    assert.equal(report[27].date, '2026-02-28');
+  });
+
+  it('rejeita mês fora do formato AAAA-MM apontando o campo month', () => {
+    for (const month of [undefined, '2026-13', '2026-1', '11/2026']) {
+      assert.throws(() => service.getMonthlyReport(month, '2026-11-07'), {
+        statusCode: 400,
+        fields: { month: 'Informe o mês no formato AAAA-MM.' },
+      });
+    }
+  });
+
+  it('responde text/csv com ponto e vírgula, BOM e nome do arquivo com o mês', async () => {
+    insertHabit('hab-a', 'Correr; 5km "leve"', new Date(2026, 9, 31, 12).toISOString());
+    insertHabit('hab-b', '=SOMA(A1)', new Date(2026, 9, 31, 12).toISOString());
+    store.addCheckIn('hab-a', '2026-10-31');
+
+    const res = await handleApiRequest({
+      method: 'GET',
+      pathname: '/api/habits/export',
+      searchParams: new URLSearchParams('month=2026-10'),
+      readBody: async () => ({}),
+      userId: TEST_USER_ID,
+    });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.headers, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="habitflow-2026-10.csv"',
+    });
+    assert.equal(
+      res.body,
+      '﻿data;habito;status\r\n' +
+        '2026-10-31;"Correr; 5km ""leve""";feito\r\n' +
+        "2026-10-31;'=SOMA(A1);pendente\r\n"
+    );
+  });
+
+  it('entrega o CSV pelo servidor HTTP com o cabeçalho de download', async () => {
+    const server = createAppServer({ databaseFile: tempFile, jwtSecret: TEST_SECRET });
+    const token = new AuthService(new SqliteStorage(tempFile), TEST_SECRET).register({
+      name: 'Outra Pessoa',
+      email: 'outra@exemplo.com',
+      password: '12345678',
+    }).token;
+
+    const result = await new Promise((resolve, reject) => {
+      const res = {
+        writeHead(status, headers) {
+          this.statusCode = status;
+          this.headers = headers;
+        },
+        end(payload) {
+          resolve({ status: this.statusCode, headers: this.headers, body: payload });
+        },
+      };
+      server
+        .requestListener(
+          {
+            method: 'GET',
+            url: '/api/habits/export?month=2026-10',
+            headers: { host: 'localhost', authorization: `Bearer ${token}` },
+          },
+          res
+        )
+        .catch(reject);
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.headers['Content-Type'], 'text/csv; charset=utf-8');
+    assert.equal(result.body, '﻿data;habito;status\r\n');
+  });
+});
