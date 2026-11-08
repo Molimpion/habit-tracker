@@ -276,3 +276,4 @@ O detalhe de cada versão está no [`CHANGELOG.md`](./CHANGELOG.md).
 - **`v1.1.1`** — *Patch de documentação: arquitetura e diagramas atualizados* (Issue `#51`).
 - **`v1.1.2`** — *Patch de documentação: remoção de emojis dos documentos de `docs/`* (Issue `#55`).
 - **`v1.2.0`** — *Redesign da interface: tema escuro sóbrio, ícones SVG, check-in acessível e layout responsivo* (Issue `#59`).
+- **`v2.0.0`** — *Contas com login e isolamento por usuário, SQLite, exportação CSV, lembrete por e-mail, Docker e governança (lint, cobertura, gitleaks, Dependabot, templates)* (Issues `#63` a `#78` e `#95`).
