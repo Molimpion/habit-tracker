@@ -6,6 +6,13 @@ services:
       - "${HOST_PORT:-3000}:3000"
     environment:
       JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no ambiente ou no arquivo .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      REMINDER_HOUR: ${REMINDER_HOUR:-20}
+      TZ: ${TZ:-America/Recife}
     volumes:
       - habitflow-data:/app/data
     restart: unless-stopped

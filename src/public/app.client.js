@@ -48,6 +48,7 @@ const elements = {
   userMenu: document.getElementById('userMenu'),
   userName: document.getElementById('userName'),
   logoutBtn: document.getElementById('logoutBtn'),
+  reminderToggle: document.getElementById('reminderToggle'),
   exportMonthInput: document.getElementById('exportMonthInput'),
   exportBtn: document.getElementById('exportBtn'),
   exportFeedback: document.getElementById('exportFeedback'),
@@ -75,6 +76,16 @@ function showAppView() {
   elements.appView.hidden = false;
   elements.userMenu.hidden = !session;
   elements.userName.textContent = session ? session.user.name : '';
+}
+
+async function loadAccount() {
+  if (!readSession()) {
+    return;
+  }
+  const response = await apiFetch('/api/account');
+  if (response && response.ok) {
+    elements.reminderToggle.checked = (await response.json()).remindersEnabled;
+  }
 }
 
 function showAuthView() {
@@ -368,6 +379,18 @@ elements.authForm.addEventListener('submit', async (e) => {
   elements.authForm.reset();
   setAuthMode('login');
   await fetchDashboardAndHabits();
+  await loadAccount();
+});
+
+elements.reminderToggle.addEventListener('change', async () => {
+  const response = await apiFetch('/api/account', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ remindersEnabled: elements.reminderToggle.checked }),
+  });
+  if (response && response.ok) {
+    elements.reminderToggle.checked = (await response.json()).remindersEnabled;
+  }
 });
 
 elements.logoutBtn.addEventListener('click', () => {
@@ -414,4 +437,5 @@ async function loadVersion() {
 
 elements.exportMonthInput.value = currentMonth();
 fetchDashboardAndHabits();
+loadAccount();
 loadVersion();

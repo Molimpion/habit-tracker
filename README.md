@@ -46,7 +46,8 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 | Suíte de testes automatizados (unitários e integração HTTP) e CI no GitHub Actions | `RNF05` | Implementado | `v1.0.0` |
 | Modo demonstração no GitHub Pages com dados no `localStorage` do navegador | `RNF03`, `RNF06` | Implementado | `v1.1.0` |
 | Autenticação multiusuário com JWT e isolamento dos hábitos por usuário | `RF09` | Implementado | `v2.0.0` |
-| Notificações push / lembretes por e-mail e WhatsApp | Backlog Futuro | Planejado | `v2.1.0` |
+| Lembrete diário por e-mail com os hábitos pendentes (opt-in, via SMTP) | `RF11` | Implementado | `v2.0.0` |
+| Notificações push e WhatsApp | Backlog Futuro | Planejado | — |
 | Exportação mensal em CSV (data, hábito e situação de cada dia; abre direto no Excel) | `RF10` | Implementado | `v2.0.0` |
 | Exportação mensal em PDF | Backlog Futuro | Planejado | — |
 
@@ -67,7 +68,12 @@ habit-tracker/
 │   │   ├── index.html
 │   │   ├── styles.css
 │   │   └── app.client.js
+│   ├── reminders/
+│   │   ├── reminderConfig.js        # Lê SMTP_* , MAIL_FROM e REMINDER_HOUR do ambiente
+│   │   ├── reminderService.js       # Monta e envia o lembrete diário, uma vez por dia por pessoa
+│   │   └── smtpMailer.js            # Envio por SMTP com nodemailer
 │   ├── auth/
+│   │   ├── accountRouter.js         # GET/PATCH /api/account (preferência de lembrete)
 │   │   ├── authService.js           # Cadastro, login (scrypt) e validação do token
 │   │   ├── authRouter.js            # Rotas /api/auth/register e /api/auth/login
 │   │   └── jwt.js                   # JWT HS256 com crypto nativo
@@ -92,6 +98,7 @@ habit-tracker/
 ├── tests/
 │   ├── habit.test.js                # Testes automatizados (Unitários + API REST)
 │   ├── auth.test.js                 # JWT, cadastro, login e isolamento entre usuários
+│   ├── reminder.test.js             # Lembrete por e-mail, configuração e preferência da conta
 │   └── demo.test.js                 # Testes do modo demonstração e do adapter do navegador
 ├── data/
 │   └── .gitkeep                     # Diretório do banco local (habitflow.db)
@@ -115,7 +122,7 @@ habit-tracker/
 - **Node.js** versão `22.13.0` ou superior instalado ([https://nodejs.org/](https://nodejs.org/)).
 - **Git** instalado.
 
-> **Portabilidade Total (`RNF06`):** Em execução, o projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:sqlite`, `node:test`), sem dependências npm nem servidor de banco de dados: o SQLite é um arquivo em `data/habitflow.db` (caminho configurável em `DATABASE_FILE`). No Node 22, o `node:sqlite` exibe um aviso de recurso experimental ao iniciar. A única dependência é o ESLint, de desenvolvimento, usado no lint e no hook de pre-commit.
+> **Portabilidade Total (`RNF06`):** Em execução, o projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:sqlite`, `node:test`), sem dependências npm nem servidor de banco de dados: o SQLite é um arquivo em `data/habitflow.db` (caminho configurável em `DATABASE_FILE`). No Node 22, o `node:sqlite` exibe um aviso de recurso experimental ao iniciar. A única dependência de execução é o `nodemailer`, usado só pelo lembrete por e-mail; o ESLint é dependência de desenvolvimento, usada no lint e no hook de pre-commit.
 
 ### Passo a Passo
 
@@ -145,6 +152,10 @@ habit-tracker/
    - **Dashboard Web Interativo:** `http://localhost:3000`
    - **Healthcheck da API:** `http://localhost:3000/api/health`
    - **Estatísticas JSON:** `http://localhost:3000/api/habits/stats`
+
+### Lembrete por e-mail (opcional)
+
+Quem marca "Lembrete por e-mail" no topo do dashboard recebe, a partir das 20h, um e-mail por dia com os hábitos ainda pendentes; sem pendência, nada é enviado. O servidor verifica a cada minuto e grava a data do último envio no banco, então reiniciar não repete o e-mail. Para ligar, defina `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `MAIL_FROM` (e, se quiser, `REMINDER_HOUR`, de 0 a 23). Sem elas o servidor sobe normalmente, com os lembretes desligados e um aviso no terminal. O horário segue o fuso do servidor; no Docker, a variável `TZ` (padrão `America/Recife`).
 
 ### Execução com Docker
 
