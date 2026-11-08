@@ -95,14 +95,21 @@ describe('Modo demonstração do GitHub Pages', () => {
     const res = await call(openDemoPage(createWebStorage()), 'POST', '/api/habits', JSON.stringify({ title: 'Oi' }));
 
     assert.equal(res.status, 400);
-    assert.equal(res.body.error, 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.');
+    assert.deepEqual(res.body.error, {
+      code: 'VALIDATION_ERROR',
+      message: 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+      fields: { title: 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.' },
+    });
   });
 
   it('deve responder 400 quando o corpo não é JSON válido', async () => {
     const res = await call(openDemoPage(createWebStorage()), 'POST', '/api/habits', '{ invalido');
 
     assert.equal(res.status, 400);
-    assert.equal(res.body.error, 'JSON inválido no corpo da requisição.');
+    assert.deepEqual(res.body.error, {
+      code: 'VALIDATION_ERROR',
+      message: 'JSON inválido no corpo da requisição.',
+    });
   });
 
   it('deve marcar check-in e refletir nas estatísticas', async () => {

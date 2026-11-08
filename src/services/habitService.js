@@ -15,10 +15,12 @@ const VALID_CATEGORIES = [
 ];
 
 class ValidationError extends Error {
-  constructor(message) {
+  constructor(message, field) {
     super(message);
     this.name = 'ValidationError';
     this.statusCode = 400;
+    this.code = 'VALIDATION_ERROR';
+    this.fields = { [field]: message };
   }
 }
 
@@ -27,6 +29,7 @@ class NotFoundError extends Error {
     super(message);
     this.name = 'NotFoundError';
     this.statusCode = 404;
+    this.code = 'NOT_FOUND';
   }
 }
 
@@ -148,7 +151,8 @@ class HabitService {
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       throw new ValidationError(
-        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+        'title'
       );
     }
 
@@ -159,7 +163,8 @@ class HabitService {
       parsedTarget > 7
     ) {
       throw new ValidationError(
-        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.',
+        'targetDaysPerWeek'
       );
     }
 
@@ -201,7 +206,8 @@ class HabitService {
       updatedTitle.trim().length < 3
     ) {
       throw new ValidationError(
-        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+        'title'
       );
     }
 
@@ -216,7 +222,8 @@ class HabitService {
       updatedTarget > 7
     ) {
       throw new ValidationError(
-        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.',
+        'targetDaysPerWeek'
       );
     }
 
@@ -259,7 +266,8 @@ class HabitService {
   toggleCheckIn(id, dateStr = getTodayISO(), referenceDate = getTodayISO()) {
     if (!isValidDateFormat(dateStr)) {
       throw new ValidationError(
-        'Formato de data inválido. Utilize o padrão YYYY-MM-DD.'
+        'Formato de data inválido. Utilize o padrão YYYY-MM-DD.',
+        'date'
       );
     }
 

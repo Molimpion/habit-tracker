@@ -188,7 +188,7 @@ elements.habitForm.addEventListener('submit', async (e) => {
 
   const data = await response.json();
   if (!response.ok) {
-    showFeedback(data.error || 'Não foi possível salvar o hábito.');
+    showFeedback((data.error && data.error.message) || 'Não foi possível salvar o hábito.');
     return;
   }
 

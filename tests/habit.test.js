@@ -16,6 +16,7 @@ const {
 } = require('../src/services/habitService');
 const { JsonFileStorage } = require('../src/storage/jsonFileStorage');
 const { createAppServer } = require('../src/app');
+const { createApiRouter } = require('../src/api/router');
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   it('deve retornar streaks zeradas quando não houver check-ins', () => {
@@ -370,10 +371,13 @@ describe('API HTTP — Integração das rotas REST', () => {
   it('deve retornar 400 com a mensagem de validação quando o título é curto demais', async () => {
     const res = await invokeApi('POST', '/api/habits', { title: 'Oi' });
     assert.equal(res.status, 400);
-    assert.equal(
-      res.json().error,
-      'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
-    );
+    assert.deepEqual(res.json(), {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+        fields: { title: 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.' },
+      },
+    });
   });
 
   it('deve retornar 400 quando o corpo da requisição não é JSON válido', async () => {
@@ -398,17 +402,23 @@ describe('API HTTP — Integração das rotas REST', () => {
       server.requestListener(req, res).catch(reject);
     });
     assert.equal(result.status, 400);
-    assert.equal(result.body.error, 'JSON inválido no corpo da requisição.');
+    assert.deepEqual(result.body, {
+      error: { code: 'VALIDATION_ERROR', message: 'JSON inválido no corpo da requisição.' },
+    });
   });
 
   it('deve retornar 404 ao editar ou excluir um hábito inexistente', async () => {
     const putRes = await invokeApi('PUT', '/api/habits/hab-nao-existe', { title: 'Novo título' });
     assert.equal(putRes.status, 404);
-    assert.equal(putRes.json().error, 'Hábito não encontrado.');
+    assert.deepEqual(putRes.json(), {
+      error: { code: 'NOT_FOUND', message: 'Hábito não encontrado.' },
+    });
 
     const deleteRes = await invokeApi('DELETE', '/api/habits/hab-nao-existe');
     assert.equal(deleteRes.status, 404);
-    assert.equal(deleteRes.json().error, 'Hábito não encontrado.');
+    assert.deepEqual(deleteRes.json(), {
+      error: { code: 'NOT_FOUND', message: 'Hábito não encontrado.' },
+    });
   });
 
   it('deve excluir um hábito existente via DELETE e deixar de encontrá-lo', async () => {
@@ -420,13 +430,17 @@ describe('API HTTP — Integração das rotas REST', () => {
 
     const getRes = await invokeApi('GET', `/api/habits/${created.id}`);
     assert.equal(getRes.status, 404);
-    assert.equal(getRes.json().error, 'Hábito não encontrado.');
+    assert.deepEqual(getRes.json(), {
+      error: { code: 'NOT_FOUND', message: 'Hábito não encontrado.' },
+    });
   });
 
   it('deve retornar 404 para endpoint de API desconhecido', async () => {
     const res = await invokeApi('GET', '/api/nao-existe');
     assert.equal(res.status, 404);
-    assert.equal(res.json().error, 'Endpoint da API não encontrado.');
+    assert.deepEqual(res.json(), {
+      error: { code: 'NOT_FOUND', message: 'Endpoint da API não encontrado.' },
+    });
   });
 
   it('deve retornar as estatísticas em GET /api/habits/stats', async () => {
@@ -435,5 +449,97 @@ describe('API HTTP — Integração das rotas REST', () => {
     assert.equal(res.status, 200);
     assert.equal(res.json().totalHabits, 1);
     assert.equal(res.json().completionRateToday, 0);
+  });
+});
+
+describe('Formato padrão de erro da API ([API-ERR])', () => {
+  let tempFile;
+  let service;
+  let handleApiRequest;
+
+  beforeEach(() => {
+    tempFile = path.join(
+      os.tmpdir(),
+      `habitflow-err-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
+    );
+    fs.writeFileSync(tempFile, '[]', 'utf-8');
+    service = new HabitService(new JsonFileStorage(tempFile));
+    handleApiRequest = createApiRouter({ habitService: service, version: 'test' });
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+  });
+
+  function request(method, pathname, body) {
+    return handleApiRequest({
+      method,
+      pathname,
+      searchParams: new URLSearchParams(),
+      readBody: async () => body || {},
+    });
+  }
+
+  it('aponta o campo targetDaysPerWeek quando a meta semanal é inválida', async () => {
+    const res = await request('POST', '/api/habits', { title: 'Correr 5km', targetDaysPerWeek: 9 });
+    const message = 'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.';
+    assert.equal(res.status, 400);
+    assert.deepEqual(res.payload, {
+      error: { code: 'VALIDATION_ERROR', message, fields: { targetDaysPerWeek: message } },
+    });
+  });
+
+  it('aponta o campo date quando a data do check-in tem formato inválido', async () => {
+    const created = service.createHabit({ title: 'Ler um capítulo' });
+    const res = await request('POST', `/api/habits/${created.id}/checkin`, { date: '06/11/2026' });
+    const message = 'Formato de data inválido. Utilize o padrão YYYY-MM-DD.';
+    assert.equal(res.status, 400);
+    assert.deepEqual(res.payload, {
+      error: { code: 'VALIDATION_ERROR', message, fields: { date: message } },
+    });
+  });
+
+  it('responde 500 com mensagem genérica sem expor o erro interno', async () => {
+    const failingRouter = createApiRouter({
+      habitService: {
+        getAllHabits() {
+          throw new Error('EACCES: permission denied, open /srv/segredo.json');
+        },
+      },
+      version: 'test',
+    });
+    const res = await failingRouter({
+      method: 'GET',
+      pathname: '/api/habits',
+      searchParams: new URLSearchParams(),
+      readBody: async () => ({}),
+    });
+    assert.equal(res.status, 500);
+    assert.deepEqual(res.payload, {
+      error: { code: 'INTERNAL_ERROR', message: 'Erro interno no servidor.' },
+    });
+  });
+
+  it('responde 404 no mesmo formato para arquivo estático inexistente', async () => {
+    const server = createAppServer(tempFile);
+    const result = await new Promise((resolve, reject) => {
+      const res = {
+        writeHead(status) {
+          this.statusCode = status;
+        },
+        end(payload) {
+          resolve({ status: this.statusCode, body: JSON.parse(payload) });
+        },
+      };
+      server
+        .requestListener({ method: 'GET', url: '/nao-existe.html', headers: { host: 'localhost' } }, res)
+        .catch(reject);
+    });
+    assert.equal(result.status, 404);
+    assert.deepEqual(result.body, {
+      error: { code: 'NOT_FOUND', message: 'Recurso não encontrado.' },
+    });
   });
 });
