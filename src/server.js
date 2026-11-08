@@ -6,10 +6,17 @@ const { createSmtpMailer } = require('./reminders/smtpMailer');
 
 const PORT = process.env.PORT || 3000;
 const REMINDER_INTERVAL_MS = 60 * 1000;
+const EXAMPLE_JWT_SECRET = 'troque-por-um-segredo-aleatorio';
 
 if (!process.env.JWT_SECRET) {
   console.error('Defina a variável de ambiente JWT_SECRET antes de iniciar o servidor.');
   process.exit(1);
+}
+
+if (process.env.JWT_SECRET === EXAMPLE_JWT_SECRET) {
+  console.warn(
+    'Atenção: JWT_SECRET ainda é o valor de exemplo. Gere um segredo com "openssl rand -hex 32" antes de expor o servidor.'
+  );
 }
 
 let reminderConfig;
