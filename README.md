@@ -47,7 +47,8 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 | Modo demonstração no GitHub Pages com dados no `localStorage` do navegador | `RNF03`, `RNF06` | Implementado | `v1.1.0` |
 | Autenticação multiusuário com JWT e isolamento dos hábitos por usuário | `RF09` | Implementado | `v2.0.0` |
 | Notificações push / lembretes por e-mail e WhatsApp | Backlog Futuro | Planejado | `v2.1.0` |
-| Exportação de relatórios mensais em PDF/CSV | Backlog Futuro | Planejado | `v2.2.0` |
+| Exportação mensal em CSV (data, hábito e situação de cada dia; abre direto no Excel) | `RF10` | Implementado | `v2.0.0` |
+| Exportação mensal em PDF | Backlog Futuro | Planejado | — |
 
 ---
 

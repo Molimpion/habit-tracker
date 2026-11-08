@@ -1,10 +1,13 @@
 const crypto = require('crypto');
 const {
+  toLocalISODate,
   getTodayISO,
   isValidDateFormat,
   calculateStreaks,
 } = require('../utils/streakCalculator');
 const { ValidationError, NotFoundError } = require('../utils/errors');
+
+const MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const VALID_CATEGORIES = [
   'Saúde',
@@ -208,6 +211,42 @@ class HabitService {
       date: dateStr,
       habit: this._enrichHabit(this.storage.findById(id), referenceDate),
     };
+  }
+
+  getMonthlyReport(month, referenceDate = getTodayISO()) {
+    if (typeof month !== 'string' || !MONTH_REGEX.test(month)) {
+      throw new ValidationError('Informe o mês no formato AAAA-MM.', 'month');
+    }
+
+    const [year, monthNumber] = month.split('-').map(Number);
+    const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const habits = this.storage.list().map((habit) => {
+      const createdOn = toLocalISODate(new Date(habit.createdAt));
+      const firstCheckIn = habit.completedDates[0];
+      return {
+        title: habit.title,
+        startsOn: firstCheckIn && firstCheckIn < createdOn ? firstCheckIn : createdOn,
+        completed: new Set(habit.completedDates),
+      };
+    });
+
+    const rows = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${month}-${String(day).padStart(2, '0')}`;
+      if (date > referenceDate) {
+        break;
+      }
+      for (const habit of habits) {
+        if (date >= habit.startsOn) {
+          rows.push({
+            date,
+            habit: habit.title,
+            status: habit.completed.has(date) ? 'feito' : 'pendente',
+          });
+        }
+      }
+    }
+    return rows;
   }
 
   getDashboardStats(referenceDate = getTodayISO()) {

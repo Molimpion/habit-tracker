@@ -1,11 +1,14 @@
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-function getTodayISO() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+function toLocalISODate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getTodayISO() {
+  return toLocalISODate(new Date());
 }
 
 function isValidDateFormat(dateStr) {
@@ -77,6 +80,7 @@ function calculateStreaks(completedDates = [], referenceDate = getTodayISO()) {
 }
 
 module.exports = {
+  toLocalISODate,
   getTodayISO,
   isValidDateFormat,
   calculateStreaks,

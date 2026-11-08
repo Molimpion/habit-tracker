@@ -15,6 +15,18 @@ function parseJsonText(raw) {
   }
 }
 
+function toCsvField(value) {
+  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function toMonthlyCsv(rows) {
+  const lines = ['data;habito;status'].concat(
+    rows.map((row) => [row.date, row.habit, row.status].map(toCsvField).join(';'))
+  );
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
+}
+
 function errorResponse(status, code, message, fields) {
   const error = fields ? { code, message, fields } : { code, message };
   return { status, payload: { error } };
@@ -52,6 +64,18 @@ function createApiRouter({ habitServiceFor, version }) {
 
     if (pathname === '/api/habits/stats' && method === 'GET') {
       return { status: 200, payload: habitService.getDashboardStats() };
+    }
+
+    if (pathname === '/api/habits/export' && method === 'GET') {
+      const month = searchParams.get('month') || undefined;
+      return {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="habitflow-${month}.csv"`,
+        },
+        body: toMonthlyCsv(habitService.getMonthlyReport(month)),
+      };
     }
 
     if (pathname === '/api/habits' && method === 'GET') {
