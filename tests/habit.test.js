@@ -1,9 +1,11 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Readable } = require('stream');
+const { spawn } = require('child_process');
 
 const {
   calculateStreaks,
@@ -14,8 +16,42 @@ const {
   ValidationError,
   NotFoundError,
 } = require('../src/services/habitService');
-const { JsonFileStorage } = require('../src/storage/jsonFileStorage');
+const { SqliteStorage } = require('../src/storage/sqliteStorage');
 const { createAppServer } = require('../src/app');
+const { createApiRouter } = require('../src/api/router');
+const { AuthService } = require('../src/auth/authService');
+
+function tempDatabaseFile(prefix) {
+  return path.join(
+    os.tmpdir(),
+    `habitflow-${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
+  );
+}
+
+const TEST_USER_ID = 'usr-teste';
+const TEST_SECRET = crypto.randomBytes(32).toString('hex');
+
+function createUserStore(file) {
+  const storage = new SqliteStorage(file);
+  storage.createUser({
+    id: TEST_USER_ID,
+    name: 'Pessoa de Teste',
+    email: 'teste@exemplo.com',
+    passwordHash: 'sem-login-nos-testes-de-habito',
+    createdAt: new Date().toISOString(),
+  });
+  return storage.forUser(TEST_USER_ID);
+}
+
+function reopenUserStore(file) {
+  return new SqliteStorage(file).forUser(TEST_USER_ID);
+}
+
+function removeDatabase(file) {
+  for (const suffix of ['', '-wal', '-shm']) {
+    fs.rmSync(`${file}${suffix}`, { force: true });
+  }
+}
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   it('deve retornar streaks zeradas quando não houver check-ins', () => {
@@ -64,7 +100,7 @@ describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   });
 });
 
-describe('HabitService — Persistência em JSON ([RNF02])', () => {
+describe('HabitService — Persistência em SQLite ([RNF02])', () => {
   let tempDir;
 
   beforeEach(() => {
@@ -75,23 +111,39 @@ describe('HabitService — Persistência em JSON ([RNF02])', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('deve criar o diretório e o arquivo com 3 hábitos de exemplo quando ainda não existem', () => {
-    const dataFile = path.join(tempDir, 'nested', 'habits.json');
-    new HabitService(new JsonFileStorage(dataFile));
+  it('deve criar o diretório do banco quando ainda não existe', () => {
+    const dataFile = path.join(tempDir, 'nested', 'habitflow.db');
+    new SqliteStorage(dataFile).close();
 
-    const saved = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
-    assert.deepEqual(
-      saved.map((h) => h.id),
-      ['hab-01-eng-software', 'hab-02-hidratacao', 'hab-03-leitura']
-    );
+    assert.equal(fs.existsSync(dataFile), true);
   });
 
-  it('não deve sobrescrever um arquivo de dados já existente', () => {
-    const dataFile = path.join(tempDir, 'habits.json');
-    fs.writeFileSync(dataFile, '[]', 'utf-8');
-    new HabitService(new JsonFileStorage(dataFile));
+  it('deve persistir todos os check-ins gravados ao mesmo tempo por processos diferentes', async () => {
+    const dataFile = path.join(tempDir, 'habitflow.db');
+    const { id } = new HabitService(createUserStore(dataFile)).createHabit({ title: 'Correr 5km' });
+    const months = ['01', '02', '03', '04'];
 
-    assert.equal(fs.readFileSync(dataFile, 'utf-8'), '[]');
+    const writer = (month) => `
+      const { HabitService } = require(${JSON.stringify(path.join(__dirname, '../src/services/habitService'))});
+      const { SqliteStorage } = require(${JSON.stringify(path.join(__dirname, '../src/storage/sqliteStorage'))});
+      const service = new HabitService(
+        new SqliteStorage(${JSON.stringify(dataFile)}).forUser(${JSON.stringify(TEST_USER_ID)})
+      );
+      for (let day = 1; day <= 28; day++) {
+        service.toggleCheckIn(${JSON.stringify(id)}, '2026-${month}-' + String(day).padStart(2, '0'));
+      }
+    `;
+    const exitCodes = await Promise.all(
+      months.map(
+        (month) =>
+          new Promise((resolve) => {
+            spawn(process.execPath, ['-e', writer(month)], { stdio: 'ignore' }).on('exit', resolve);
+          })
+      )
+    );
+
+    assert.deepEqual(exitCodes, [0, 0, 0, 0]);
+    assert.equal(reopenUserStore(dataFile).findById(id).completedDates.length, 4 * 28);
   });
 });
 
@@ -100,18 +152,12 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
   let service;
 
   beforeEach(() => {
-    tempFile = path.join(
-      os.tmpdir(),
-      `habitflow-test-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
-    );
-    fs.writeFileSync(tempFile, '[]', 'utf-8');
-    service = new HabitService(new JsonFileStorage(tempFile));
+    tempFile = tempDatabaseFile('test');
+    service = new HabitService(createUserStore(tempFile));
   });
 
   afterEach(() => {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
+    removeDatabase(tempFile);
   });
 
   it('deve cadastrar um novo hábito válido ([RF01])', () => {
@@ -132,9 +178,9 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
     assert.equal(habit.currentStreak, 0);
   });
 
-  it('deve manter o hábito cadastrado ao recarregar o serviço a partir do arquivo ([RNF02])', () => {
+  it('deve manter o hábito cadastrado ao recarregar o serviço a partir do banco ([RNF02])', () => {
     const created = service.createHabit({ title: 'Alongar pela manhã' });
-    const reloaded = JSON.parse(fs.readFileSync(tempFile, 'utf-8'));
+    const reloaded = new HabitService(reopenUserStore(tempFile)).getAllHabits();
     assert.deepEqual(reloaded.map((h) => h.id), [created.id]);
   });
 
@@ -291,6 +337,7 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
 describe('API HTTP — Integração das rotas REST', () => {
   let tempFile;
   let server;
+  let token;
 
   function invokeApi(method, url, bodyObj = null) {
     return new Promise((resolve, reject) => {
@@ -303,7 +350,11 @@ describe('API HTTP — Integração das rotas REST', () => {
       });
       req.method = method;
       req.url = url;
-      req.headers = { host: 'localhost', 'content-type': 'application/json' };
+      req.headers = {
+        host: 'localhost',
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      };
 
       const res = {
         statusCode: 200,
@@ -325,18 +376,17 @@ describe('API HTTP — Integração das rotas REST', () => {
   }
 
   beforeEach(() => {
-    tempFile = path.join(
-      os.tmpdir(),
-      `habitflow-api-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
-    );
-    fs.writeFileSync(tempFile, '[]', 'utf-8');
-    server = createAppServer(tempFile);
+    tempFile = tempDatabaseFile('api');
+    server = createAppServer({ databaseFile: tempFile, jwtSecret: TEST_SECRET });
+    token = new AuthService(new SqliteStorage(tempFile), TEST_SECRET).register({
+      name: 'Pessoa de Teste',
+      email: 'teste@exemplo.com',
+      password: '12345678',
+    }).token;
   });
 
   afterEach(() => {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
+    removeDatabase(tempFile);
   });
 
   it('deve responder GET /api/health com status 200 e a versão do package.json', async () => {
@@ -370,10 +420,13 @@ describe('API HTTP — Integração das rotas REST', () => {
   it('deve retornar 400 com a mensagem de validação quando o título é curto demais', async () => {
     const res = await invokeApi('POST', '/api/habits', { title: 'Oi' });
     assert.equal(res.status, 400);
-    assert.equal(
-      res.json().error,
-      'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
-    );
+    assert.deepEqual(res.json(), {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+        fields: { title: 'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.' },
+      },
+    });
   });
 
   it('deve retornar 400 quando o corpo da requisição não é JSON válido', async () => {
@@ -385,7 +438,7 @@ describe('API HTTP — Integração das rotas REST', () => {
     });
     req.method = 'POST';
     req.url = '/api/habits';
-    req.headers = { host: 'localhost' };
+    req.headers = { host: 'localhost', authorization: `Bearer ${token}` };
     const result = await new Promise((resolve, reject) => {
       const res = {
         writeHead(status) {
@@ -398,17 +451,23 @@ describe('API HTTP — Integração das rotas REST', () => {
       server.requestListener(req, res).catch(reject);
     });
     assert.equal(result.status, 400);
-    assert.equal(result.body.error, 'JSON inválido no corpo da requisição.');
+    assert.deepEqual(result.body, {
+      error: { code: 'VALIDATION_ERROR', message: 'JSON inválido no corpo da requisição.' },
+    });
   });
 
   it('deve retornar 404 ao editar ou excluir um hábito inexistente', async () => {
     const putRes = await invokeApi('PUT', '/api/habits/hab-nao-existe', { title: 'Novo título' });
     assert.equal(putRes.status, 404);
-    assert.equal(putRes.json().error, 'Hábito não encontrado.');
+    assert.deepEqual(putRes.json(), {
+      error: { code: 'NOT_FOUND', message: 'Hábito não encontrado.' },
+    });
 
     const deleteRes = await invokeApi('DELETE', '/api/habits/hab-nao-existe');
     assert.equal(deleteRes.status, 404);
-    assert.equal(deleteRes.json().error, 'Hábito não encontrado.');
+    assert.deepEqual(deleteRes.json(), {
+      error: { code: 'NOT_FOUND', message: 'Hábito não encontrado.' },
+    });
   });
 
   it('deve excluir um hábito existente via DELETE e deixar de encontrá-lo', async () => {
@@ -420,13 +479,17 @@ describe('API HTTP — Integração das rotas REST', () => {
 
     const getRes = await invokeApi('GET', `/api/habits/${created.id}`);
     assert.equal(getRes.status, 404);
-    assert.equal(getRes.json().error, 'Hábito não encontrado.');
+    assert.deepEqual(getRes.json(), {
+      error: { code: 'NOT_FOUND', message: 'Hábito não encontrado.' },
+    });
   });
 
   it('deve retornar 404 para endpoint de API desconhecido', async () => {
     const res = await invokeApi('GET', '/api/nao-existe');
     assert.equal(res.status, 404);
-    assert.equal(res.json().error, 'Endpoint da API não encontrado.');
+    assert.deepEqual(res.json(), {
+      error: { code: 'NOT_FOUND', message: 'Endpoint da API não encontrado.' },
+    });
   });
 
   it('deve retornar as estatísticas em GET /api/habits/stats', async () => {
@@ -435,5 +498,223 @@ describe('API HTTP — Integração das rotas REST', () => {
     assert.equal(res.status, 200);
     assert.equal(res.json().totalHabits, 1);
     assert.equal(res.json().completionRateToday, 0);
+  });
+});
+
+describe('Formato padrão de erro da API ([API-ERR])', () => {
+  let tempFile;
+  let service;
+  let handleApiRequest;
+
+  beforeEach(() => {
+    tempFile = tempDatabaseFile('err');
+    service = new HabitService(createUserStore(tempFile));
+    handleApiRequest = createApiRouter({ habitServiceFor: () => service, version: 'test' });
+  });
+
+  afterEach(() => {
+    removeDatabase(tempFile);
+  });
+
+  function request(method, pathname, body) {
+    return handleApiRequest({
+      method,
+      pathname,
+      searchParams: new URLSearchParams(),
+      readBody: async () => body || {},
+      userId: TEST_USER_ID,
+    });
+  }
+
+  it('aponta o campo targetDaysPerWeek quando a meta semanal é inválida', async () => {
+    const res = await request('POST', '/api/habits', { title: 'Correr 5km', targetDaysPerWeek: 9 });
+    const message = 'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.';
+    assert.equal(res.status, 400);
+    assert.deepEqual(res.payload, {
+      error: { code: 'VALIDATION_ERROR', message, fields: { targetDaysPerWeek: message } },
+    });
+  });
+
+  it('aponta o campo date quando a data do check-in tem formato inválido', async () => {
+    const created = service.createHabit({ title: 'Ler um capítulo' });
+    const res = await request('POST', `/api/habits/${created.id}/checkin`, { date: '06/11/2026' });
+    const message = 'Formato de data inválido. Utilize o padrão YYYY-MM-DD.';
+    assert.equal(res.status, 400);
+    assert.deepEqual(res.payload, {
+      error: { code: 'VALIDATION_ERROR', message, fields: { date: message } },
+    });
+  });
+
+  it('responde 500 com mensagem genérica sem expor o erro interno', async () => {
+    const failingRouter = createApiRouter({
+      habitServiceFor: () => ({
+        getAllHabits() {
+          throw new Error('EACCES: permission denied, open /srv/segredo.json');
+        },
+      }),
+      version: 'test',
+    });
+    const res = await failingRouter({
+      method: 'GET',
+      pathname: '/api/habits',
+      searchParams: new URLSearchParams(),
+      readBody: async () => ({}),
+      userId: TEST_USER_ID,
+    });
+    assert.equal(res.status, 500);
+    assert.deepEqual(res.payload, {
+      error: { code: 'INTERNAL_ERROR', message: 'Erro interno no servidor.' },
+    });
+  });
+
+  it('responde 404 no mesmo formato para arquivo estático inexistente', async () => {
+    const server = createAppServer({ databaseFile: tempFile, jwtSecret: TEST_SECRET });
+    const result = await new Promise((resolve, reject) => {
+      const res = {
+        writeHead(status) {
+          this.statusCode = status;
+        },
+        end(payload) {
+          resolve({ status: this.statusCode, body: JSON.parse(payload) });
+        },
+      };
+      server
+        .requestListener({ method: 'GET', url: '/nao-existe.html', headers: { host: 'localhost' } }, res)
+        .catch(reject);
+    });
+    assert.equal(result.status, 404);
+    assert.deepEqual(result.body, {
+      error: { code: 'NOT_FOUND', message: 'Recurso não encontrado.' },
+    });
+  });
+});
+
+describe('Exportação mensal em CSV ([EXP-220])', () => {
+  let tempFile;
+  let store;
+  let service;
+  let handleApiRequest;
+
+  function insertHabit(id, title, createdAt) {
+    store.insert({
+      id,
+      title,
+      description: '',
+      category: 'Outros',
+      targetDaysPerWeek: 7,
+      createdAt,
+    });
+  }
+
+  beforeEach(() => {
+    tempFile = tempDatabaseFile('csv');
+    store = createUserStore(tempFile);
+    service = new HabitService(store);
+    handleApiRequest = createApiRouter({ habitServiceFor: () => service, version: 'test' });
+  });
+
+  afterEach(() => {
+    removeDatabase(tempFile);
+  });
+
+  it('gera uma linha por hábito por dia, da criação até a data de referência', () => {
+    insertHabit('hab-a', 'Correr', new Date(2026, 10, 3, 12).toISOString());
+    insertHabit('hab-b', 'Ler', new Date(2026, 10, 4, 12).toISOString());
+    store.addCheckIn('hab-a', '2026-11-04');
+
+    assert.deepEqual(service.getMonthlyReport('2026-11', '2026-11-05'), [
+      { date: '2026-11-03', habit: 'Correr', status: 'pendente' },
+      { date: '2026-11-04', habit: 'Correr', status: 'feito' },
+      { date: '2026-11-04', habit: 'Ler', status: 'pendente' },
+      { date: '2026-11-05', habit: 'Correr', status: 'pendente' },
+      { date: '2026-11-05', habit: 'Ler', status: 'pendente' },
+    ]);
+  });
+
+  it('começa no check-in mais antigo quando ele é anterior à criação do hábito', () => {
+    insertHabit('hab-a', 'Correr', new Date(2026, 10, 3, 12).toISOString());
+    store.addCheckIn('hab-a', '2026-11-01');
+
+    assert.deepEqual(service.getMonthlyReport('2026-11', '2026-11-02'), [
+      { date: '2026-11-01', habit: 'Correr', status: 'feito' },
+      { date: '2026-11-02', habit: 'Correr', status: 'pendente' },
+    ]);
+  });
+
+  it('cobre o mês inteiro quando ele já terminou', () => {
+    insertHabit('hab-a', 'Correr', new Date(2026, 0, 15, 12).toISOString());
+    const report = service.getMonthlyReport('2026-02', '2026-11-07');
+    assert.equal(report.length, 28);
+    assert.equal(report[27].date, '2026-02-28');
+  });
+
+  it('rejeita mês fora do formato AAAA-MM apontando o campo month', () => {
+    for (const month of [undefined, '2026-13', '2026-1', '11/2026']) {
+      assert.throws(() => service.getMonthlyReport(month, '2026-11-07'), {
+        statusCode: 400,
+        fields: { month: 'Informe o mês no formato AAAA-MM.' },
+      });
+    }
+  });
+
+  it('responde text/csv com ponto e vírgula, BOM e nome do arquivo com o mês', async () => {
+    insertHabit('hab-a', 'Correr; 5km "leve"', new Date(2026, 9, 31, 12).toISOString());
+    insertHabit('hab-b', '=SOMA(A1)', new Date(2026, 9, 31, 12).toISOString());
+    store.addCheckIn('hab-a', '2026-10-31');
+
+    const res = await handleApiRequest({
+      method: 'GET',
+      pathname: '/api/habits/export',
+      searchParams: new URLSearchParams('month=2026-10'),
+      readBody: async () => ({}),
+      userId: TEST_USER_ID,
+    });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.headers, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="habitflow-2026-10.csv"',
+    });
+    assert.equal(
+      res.body,
+      '﻿data;habito;status\r\n' +
+        '2026-10-31;"Correr; 5km ""leve""";feito\r\n' +
+        "2026-10-31;'=SOMA(A1);pendente\r\n"
+    );
+  });
+
+  it('entrega o CSV pelo servidor HTTP com o cabeçalho de download', async () => {
+    const server = createAppServer({ databaseFile: tempFile, jwtSecret: TEST_SECRET });
+    const token = new AuthService(new SqliteStorage(tempFile), TEST_SECRET).register({
+      name: 'Outra Pessoa',
+      email: 'outra@exemplo.com',
+      password: '12345678',
+    }).token;
+
+    const result = await new Promise((resolve, reject) => {
+      const res = {
+        writeHead(status, headers) {
+          this.statusCode = status;
+          this.headers = headers;
+        },
+        end(payload) {
+          resolve({ status: this.statusCode, headers: this.headers, body: payload });
+        },
+      };
+      server
+        .requestListener(
+          {
+            method: 'GET',
+            url: '/api/habits/export?month=2026-10',
+            headers: { host: 'localhost', authorization: `Bearer ${token}` },
+          },
+          res
+        )
+        .catch(reject);
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.headers['Content-Type'], 'text/csv; charset=utf-8');
+    assert.equal(result.body, '﻿data;habito;status\r\n');
   });
 });

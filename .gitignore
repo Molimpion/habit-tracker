@@ -9,6 +9,8 @@ data/*.json
 !data/.gitkeep
 *.sqlite
 *.db
+*.db-wal
+*.db-shm
 
 # Arquivos de ambiente
 .env

@@ -7,13 +7,17 @@ function createDemoFetch(handleApiRequest, fallbackFetch) {
       return fallbackFetch(input, init);
     }
 
-    const { status, payload } = await handleApiRequest({
+    const { status, payload, headers, body } = await handleApiRequest({
       method: (init.method || 'GET').toUpperCase(),
       pathname: url.pathname,
       searchParams: url.searchParams,
       readBody: async () => parseJsonText(init.body),
+      userId: 'demo',
     });
 
+    if (body !== undefined) {
+      return new Response(body, { status, headers });
+    }
     return new Response(JSON.stringify(payload), {
       status,
       headers: { 'Content-Type': 'application/json; charset=utf-8' },

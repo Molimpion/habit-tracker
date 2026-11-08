@@ -1,11 +1,14 @@
 {
   "name": "habitflow",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "HabitFlow - Sistema de Gerenciamento e Monitoramento de Hábitos Diários (API REST + Dashboard Web)",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test tests/habit.test.js tests/demo.test.js"
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test 'tests/*.test.js'",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='tests/**' --test-coverage-lines=85 'tests/*.test.js'",
+    "lint": "eslint .",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "repository": {
     "type": "git",
@@ -19,6 +22,13 @@
   "author": "Manoel Olímpio",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0"
+  },
+  "dependencies": {
+    "nodemailer": "^10.4.0"
   }
 }

@@ -3,11 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const { HabitService } = require('./services/habitService');
-const { JsonFileStorage } = require('./storage/jsonFileStorage');
-const { createApiRouter, parseJsonText } = require('./api/router');
+const { SqliteStorage } = require('./storage/sqliteStorage');
+const { AuthService } = require('./auth/authService');
+const { createAuthRouter } = require('./auth/authRouter');
+const { createAccountRouter } = require('./auth/accountRouter');
+const {
+  createApiRouter,
+  parseJsonText,
+  errorResponse,
+  toErrorResponse,
+} = require('./api/router');
 const { version } = require('../package.json');
 
-const DEFAULT_DATA_FILE = path.join(__dirname, '..', 'data', 'habits.json');
+const DEFAULT_DATABASE_FILE = path.join(__dirname, '..', 'data', 'habitflow.db');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -18,13 +26,17 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
 };
 
+function sendError(res, { status, payload }) {
+  return sendJson(res, status, payload);
+}
+
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   });
   res.end(body);
 }
@@ -50,11 +62,16 @@ function parseJsonBody(req) {
   });
 }
 
-function createAppServer(customDataFile) {
-  const habitService = new HabitService(
-    new JsonFileStorage(customDataFile || DEFAULT_DATA_FILE)
-  );
-  const handleApiRequest = createApiRouter({ habitService, version });
+function createAppServer({ databaseFile, jwtSecret }) {
+  const resolvedDatabaseFile = databaseFile || DEFAULT_DATABASE_FILE;
+  const storage = new SqliteStorage(resolvedDatabaseFile);
+  const authService = new AuthService(storage, jwtSecret);
+  const handleAuthRequest = createAuthRouter(authService);
+  const handleAccountRequest = createAccountRouter(storage);
+  const handleApiRequest = createApiRouter({
+    habitServiceFor: (userId) => new HabitService(storage.forUser(userId)),
+    version,
+  });
   const publicDir = path.join(__dirname, 'public');
 
   const requestListener = async (req, res) => {
@@ -62,8 +79,8 @@ function createAppServer(customDataFile) {
       if (req.method === 'OPTIONS') {
         res.writeHead(204, {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         });
         return res.end();
       }
@@ -71,13 +88,36 @@ function createAppServer(customDataFile) {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const pathname = parsedUrl.pathname;
 
+      if (pathname.startsWith('/api/auth/')) {
+        const { status, payload } = await handleAuthRequest({
+          method: req.method,
+          pathname,
+          readBody: () => parseJsonBody(req),
+        });
+        return sendJson(res, status, payload);
+      }
+
+      if (pathname === '/api/account') {
+        const { status, payload } = await handleAccountRequest({
+          method: req.method,
+          readBody: () => parseJsonBody(req),
+          userId: authService.authenticate(req.headers.authorization),
+        });
+        return sendJson(res, status, payload);
+      }
+
       if (pathname.startsWith('/api/')) {
-        const { status, payload } = await handleApiRequest({
+        const { status, payload, headers, body } = await handleApiRequest({
           method: req.method,
           pathname,
           searchParams: parsedUrl.searchParams,
           readBody: () => parseJsonBody(req),
+          userId: authService.authenticate(req.headers.authorization),
         });
+        if (body !== undefined) {
+          res.writeHead(status, headers);
+          return res.end(body);
+        }
         return sendJson(res, status, payload);
       }
 
@@ -85,7 +125,7 @@ function createAppServer(customDataFile) {
       const safeFilePath = path.normalize(path.join(publicDir, requestedFile));
 
       if (!safeFilePath.startsWith(publicDir)) {
-        return sendJson(res, 403, { error: 'Acesso negado.' });
+        return sendError(res, errorResponse(403, 'FORBIDDEN', 'Acesso negado.'));
       }
 
       if (fs.existsSync(safeFilePath) && fs.statSync(safeFilePath).isFile()) {
@@ -95,17 +135,15 @@ function createAppServer(customDataFile) {
         return fs.createReadStream(safeFilePath).pipe(res);
       }
 
-      return sendJson(res, 404, { error: 'Recurso não encontrado.' });
+      return sendError(res, errorResponse(404, 'NOT_FOUND', 'Recurso não encontrado.'));
     } catch (error) {
-      const status = error.statusCode || 500;
-      return sendJson(res, status, {
-        error: error.message || 'Erro interno no servidor.',
-      });
+      return sendError(res, toErrorResponse(error));
     }
   };
 
   const server = http.createServer(requestListener);
   server.requestListener = requestListener;
+  server.databaseFile = resolvedDatabaseFile;
   return server;
 }
 

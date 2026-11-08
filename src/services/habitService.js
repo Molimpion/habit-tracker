@@ -1,9 +1,13 @@
 const crypto = require('crypto');
 const {
+  toLocalISODate,
   getTodayISO,
   isValidDateFormat,
   calculateStreaks,
 } = require('../utils/streakCalculator');
+const { ValidationError, NotFoundError } = require('../utils/errors');
+
+const MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const VALID_CATEGORIES = [
   'Saúde',
@@ -14,74 +18,17 @@ const VALID_CATEGORIES = [
   'Outros',
 ];
 
-class ValidationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ValidationError';
-    this.statusCode = 400;
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'NotFoundError';
-    this.statusCode = 404;
-  }
-}
-
 class HabitService {
   constructor(storage) {
     this.storage = storage;
-    this._ensureStorage();
   }
 
-  _ensureStorage() {
-    if (this.storage.load() === null) {
-      this.storage.save(this._createSeedData());
+  _findOrFail(id) {
+    const found = this.storage.findById(id);
+    if (!found) {
+      throw new NotFoundError('Hábito não encontrado.');
     }
-  }
-
-  _createSeedData() {
-    const today = getTodayISO();
-    return [
-      {
-        id: 'hab-01-eng-software',
-        title: 'Estudar Engenharia de Software e Git Flow',
-        description: 'Revisar requisitos, casos de uso e praticar commits atômicos diariamente.',
-        category: 'Estudos',
-        targetDaysPerWeek: 5,
-        completedDates: [today],
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'hab-02-hidratacao',
-        title: 'Beber 2.5L de Água',
-        description: 'Manter garrafa de água na mesa durante os estudos e trabalho.',
-        category: 'Saúde',
-        targetDaysPerWeek: 7,
-        completedDates: [today],
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'hab-03-leitura',
-        title: 'Ler 15 páginas de livro técnico',
-        description: 'Leitura focada em arquitetura limpa e boas práticas de código.',
-        category: 'Produtividade',
-        targetDaysPerWeek: 5,
-        completedDates: [],
-        createdAt: new Date().toISOString(),
-      },
-    ];
-  }
-
-  _readRawHabits() {
-    this._ensureStorage();
-    return this.storage.load();
-  }
-
-  _writeRawHabits(habits) {
-    this.storage.save(habits);
+    return found;
   }
 
   _enrichHabit(habit, referenceDate = getTodayISO()) {
@@ -98,7 +45,7 @@ class HabitService {
   }
 
   getAllHabits(filters = {}, referenceDate = getTodayISO()) {
-    const habits = this._readRawHabits().map((h) =>
+    const habits = this.storage.list().map((h) =>
       this._enrichHabit(h, referenceDate)
     );
 
@@ -134,12 +81,7 @@ class HabitService {
   }
 
   getHabitById(id, referenceDate = getTodayISO()) {
-    const habits = this._readRawHabits();
-    const found = habits.find((h) => h.id === id);
-    if (!found) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-    return this._enrichHabit(found, referenceDate);
+    return this._enrichHabit(this._findOrFail(id), referenceDate);
   }
 
   createHabit(payload, referenceDate = getTodayISO()) {
@@ -148,7 +90,8 @@ class HabitService {
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       throw new ValidationError(
-        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+        'title'
       );
     }
 
@@ -159,7 +102,8 @@ class HabitService {
       parsedTarget > 7
     ) {
       throw new ValidationError(
-        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.',
+        'targetDaysPerWeek'
       );
     }
 
@@ -177,21 +121,13 @@ class HabitService {
       createdAt: new Date().toISOString(),
     };
 
-    const habits = this._readRawHabits();
-    habits.push(newHabit);
-    this._writeRawHabits(habits);
+    this.storage.insert(newHabit);
 
     return this._enrichHabit(newHabit, referenceDate);
   }
 
   updateHabit(id, payload, referenceDate = getTodayISO()) {
-    const habits = this._readRawHabits();
-    const index = habits.findIndex((h) => h.id === id);
-    if (index === -1) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-
-    const current = habits[index];
+    const current = this._findOrFail(id);
     const updatedTitle =
       payload.title !== undefined ? payload.title : current.title;
 
@@ -201,7 +137,8 @@ class HabitService {
       updatedTitle.trim().length < 3
     ) {
       throw new ValidationError(
-        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.'
+        'O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.',
+        'title'
       );
     }
 
@@ -216,7 +153,8 @@ class HabitService {
       updatedTarget > 7
     ) {
       throw new ValidationError(
-        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.'
+        'A meta semanal (targetDaysPerWeek) deve ser um número inteiro entre 1 e 7.',
+        'targetDaysPerWeek'
       );
     }
 
@@ -238,58 +176,77 @@ class HabitService {
       targetDaysPerWeek: updatedTarget,
     };
 
-    habits[index] = updatedHabit;
-    this._writeRawHabits(habits);
+    this.storage.update(updatedHabit);
 
     return this._enrichHabit(updatedHabit, referenceDate);
   }
 
   deleteHabit(id) {
-    const habits = this._readRawHabits();
-    const index = habits.findIndex((h) => h.id === id);
-    if (index === -1) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-
-    const [removed] = habits.splice(index, 1);
-    this._writeRawHabits(habits);
+    const removed = this._findOrFail(id);
+    this.storage.remove(id);
     return removed;
   }
 
   toggleCheckIn(id, dateStr = getTodayISO(), referenceDate = getTodayISO()) {
     if (!isValidDateFormat(dateStr)) {
       throw new ValidationError(
-        'Formato de data inválido. Utilize o padrão YYYY-MM-DD.'
+        'Formato de data inválido. Utilize o padrão YYYY-MM-DD.',
+        'date'
       );
     }
 
-    const habits = this._readRawHabits();
-    const index = habits.findIndex((h) => h.id === id);
-    if (index === -1) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-
-    const habit = habits[index];
-    const completedSet = new Set(habit.completedDates || []);
+    const habit = this._findOrFail(id);
 
     let action;
-    if (completedSet.has(dateStr)) {
-      completedSet.delete(dateStr);
+    if (habit.completedDates.includes(dateStr)) {
+      this.storage.removeCheckIn(id, dateStr);
       action = 'removed';
     } else {
-      completedSet.add(dateStr);
+      this.storage.addCheckIn(id, dateStr);
       action = 'added';
     }
-
-    habit.completedDates = Array.from(completedSet).sort();
-    habits[index] = habit;
-    this._writeRawHabits(habits);
 
     return {
       action,
       date: dateStr,
-      habit: this._enrichHabit(habit, referenceDate),
+      habit: this._enrichHabit(this.storage.findById(id), referenceDate),
     };
+  }
+
+  getMonthlyReport(month, referenceDate = getTodayISO()) {
+    if (typeof month !== 'string' || !MONTH_REGEX.test(month)) {
+      throw new ValidationError('Informe o mês no formato AAAA-MM.', 'month');
+    }
+
+    const [year, monthNumber] = month.split('-').map(Number);
+    const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const habits = this.storage.list().map((habit) => {
+      const createdOn = toLocalISODate(new Date(habit.createdAt));
+      const firstCheckIn = habit.completedDates[0];
+      return {
+        title: habit.title,
+        startsOn: firstCheckIn && firstCheckIn < createdOn ? firstCheckIn : createdOn,
+        completed: new Set(habit.completedDates),
+      };
+    });
+
+    const rows = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${month}-${String(day).padStart(2, '0')}`;
+      if (date > referenceDate) {
+        break;
+      }
+      for (const habit of habits) {
+        if (date >= habit.startsOn) {
+          rows.push({
+            date,
+            habit: habit.title,
+            status: habit.completed.has(date) ? 'feito' : 'pendente',
+          });
+        }
+      }
+    }
+    return rows;
   }
 
   getDashboardStats(referenceDate = getTodayISO()) {

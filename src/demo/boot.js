@@ -1,10 +1,12 @@
 (function () {
   const MODULE_FILES = [
+    'utils/errors.js',
     'utils/streakCalculator.js',
     'services/habitService.js',
     'storage/localStorageStorage.js',
     'api/router.js',
     'demo/demoFetch.js',
+    'demo/seedHabits.js',
   ];
   const STORAGE_KEY = 'habitflow:habits';
   const BUILTINS = {
@@ -55,11 +57,15 @@
     const { LocalStorageStorage } = load('storage/localStorageStorage.js');
     const { createApiRouter } = load('api/router.js');
     const { createDemoFetch } = load('demo/demoFetch.js');
+    const { createSeedHabits } = load('demo/seedHabits.js');
 
-    const habitService = new HabitService(
-      new LocalStorageStorage(window.localStorage, STORAGE_KEY)
+    const storage = new LocalStorageStorage(window.localStorage, STORAGE_KEY);
+    storage.seedIfNew(createSeedHabits());
+    const habitService = new HabitService(storage);
+    return createDemoFetch(
+      createApiRouter({ habitServiceFor: () => habitService, version }),
+      nativeFetch
     );
-    return createDemoFetch(createApiRouter({ habitService, version }), nativeFetch);
   });
 
   window.fetch = (input, init) => ready.then((demoFetch) => demoFetch(input, init));

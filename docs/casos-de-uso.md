@@ -50,7 +50,7 @@ flowchart LR
 2. O Usuário aciona o comando "Adicionar Hábito".
 3. O Sistema valida os dados recebidos (RF08).
 4. O Sistema gera um identificador único (UUID/ID), define a data de criação e inicializa a lista de *check-ins* vazia.
-5. O Sistema persiste o registro no repositório de dados (`data/habits.json`).
+5. O Sistema persiste o registro no repositório de dados (banco SQLite em `data/habitflow.db`).
 6. O Sistema retorna o hábito criado (HTTP 201) e atualiza a listagem e os indicadores na tela.
 
 #### Fluxos Alternativos

@@ -7,15 +7,40 @@ function parseJsonText(raw) {
   }
   try {
     return JSON.parse(raw);
-  } catch (err) {
+  } catch {
     const syntaxError = new Error('JSON inválido no corpo da requisição.');
     syntaxError.statusCode = 400;
+    syntaxError.code = 'VALIDATION_ERROR';
     throw syntaxError;
   }
 }
 
-function createApiRouter({ habitService, version }) {
-  async function route({ method, pathname, searchParams, readBody }) {
+function toCsvField(value) {
+  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function toMonthlyCsv(rows) {
+  const lines = ['data;habito;status'].concat(
+    rows.map((row) => [row.date, row.habit, row.status].map(toCsvField).join(';'))
+  );
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
+}
+
+function errorResponse(status, code, message, fields) {
+  const error = fields ? { code, message, fields } : { code, message };
+  return { status, payload: { error } };
+}
+
+function toErrorResponse(error) {
+  if (!error.statusCode || !error.code) {
+    return errorResponse(500, 'INTERNAL_ERROR', 'Erro interno no servidor.');
+  }
+  return errorResponse(error.statusCode, error.code, error.message, error.fields);
+}
+
+function createApiRouter({ habitServiceFor, version }) {
+  async function route({ method, pathname, searchParams, readBody, userId }) {
     if (pathname === '/api/health' && method === 'GET') {
       return {
         status: 200,
@@ -28,8 +53,29 @@ function createApiRouter({ habitService, version }) {
       };
     }
 
+    if (pathname !== '/api/habits' && !pathname.startsWith('/api/habits/')) {
+      return errorResponse(404, 'NOT_FOUND', 'Endpoint da API não encontrado.');
+    }
+
+    if (!userId) {
+      return errorResponse(401, 'UNAUTHORIZED', 'Faça login para continuar.');
+    }
+    const habitService = habitServiceFor(userId);
+
     if (pathname === '/api/habits/stats' && method === 'GET') {
       return { status: 200, payload: habitService.getDashboardStats() };
+    }
+
+    if (pathname === '/api/habits/export' && method === 'GET') {
+      const month = searchParams.get('month') || undefined;
+      return {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="habitflow-${month}.csv"`,
+        },
+        body: toMonthlyCsv(habitService.getMonthlyReport(month)),
+      };
     }
 
     if (pathname === '/api/habits' && method === 'GET') {
@@ -78,19 +124,16 @@ function createApiRouter({ habitService, version }) {
       }
     }
 
-    return { status: 404, payload: { error: 'Endpoint da API não encontrado.' } };
+    return errorResponse(404, 'NOT_FOUND', 'Endpoint da API não encontrado.');
   }
 
   return async function handleApiRequest(request) {
     try {
       return await route(request);
     } catch (error) {
-      return {
-        status: error.statusCode || 500,
-        payload: { error: error.message || 'Erro interno no servidor.' },
-      };
+      return toErrorResponse(error);
     }
   };
 }
 
-module.exports = { createApiRouter, parseJsonText };
+module.exports = { createApiRouter, parseJsonText, errorResponse, toErrorResponse };

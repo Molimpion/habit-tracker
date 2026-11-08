@@ -1,4 +1,7 @@
+const SESSION_KEY = 'habitflow:session';
+
 const state = {
+  authMode: 'login',
   habits: [],
   filters: {
     search: '',
@@ -30,7 +33,83 @@ const elements = {
   statusFilter: document.getElementById('statusFilter'),
   habitsListContainer: document.getElementById('habitsListContainer'),
   appVersion: document.getElementById('appVersion'),
+  authView: document.getElementById('authView'),
+  appView: document.getElementById('appView'),
+  authForm: document.getElementById('authForm'),
+  authHeading: document.getElementById('authHeading'),
+  nameField: document.getElementById('nameField'),
+  nameInput: document.getElementById('nameInput'),
+  emailInput: document.getElementById('emailInput'),
+  passwordInput: document.getElementById('passwordInput'),
+  authFeedback: document.getElementById('authFeedback'),
+  authSubmitBtn: document.getElementById('authSubmitBtn'),
+  authSwitchText: document.getElementById('authSwitchText'),
+  authSwitchBtn: document.getElementById('authSwitchBtn'),
+  userMenu: document.getElementById('userMenu'),
+  userName: document.getElementById('userName'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  reminderToggle: document.getElementById('reminderToggle'),
+  exportMonthInput: document.getElementById('exportMonthInput'),
+  exportBtn: document.getElementById('exportBtn'),
+  exportFeedback: document.getElementById('exportFeedback'),
 };
+
+function readSession() {
+  try {
+    return JSON.parse(window.localStorage.getItem(SESSION_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(session) {
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function clearSession() {
+  window.localStorage.removeItem(SESSION_KEY);
+}
+
+function showAppView() {
+  const session = readSession();
+  elements.authView.hidden = true;
+  elements.appView.hidden = false;
+  elements.userMenu.hidden = !session;
+  elements.userName.textContent = session ? session.user.name : '';
+}
+
+async function loadAccount() {
+  if (!readSession()) {
+    return;
+  }
+  const response = await apiFetch('/api/account');
+  if (response && response.ok) {
+    elements.reminderToggle.checked = (await response.json()).remindersEnabled;
+  }
+}
+
+function showAuthView() {
+  elements.appView.hidden = true;
+  elements.userMenu.hidden = true;
+  elements.todayDateDisplay.textContent = '';
+  elements.authView.hidden = false;
+  elements.emailInput.focus();
+}
+
+async function apiFetch(url, init = {}) {
+  const session = readSession();
+  const headers = { ...(init.headers || {}) };
+  if (session) {
+    headers.Authorization = `Bearer ${session.token}`;
+  }
+  const response = await fetch(url, { ...init, headers });
+  if (response.status === 401) {
+    clearSession();
+    showAuthView();
+    return null;
+  }
+  return response;
+}
 
 function showFeedback(message, isError = true) {
   elements.formFeedback.textContent = message;
@@ -56,9 +135,13 @@ async function fetchDashboardAndHabits() {
   }
 
   const [statsRes, habitsRes] = await Promise.all([
-    fetch('/api/habits/stats'),
-    fetch(`/api/habits?${params.toString()}`),
+    apiFetch('/api/habits/stats'),
+    apiFetch(`/api/habits?${params.toString()}`),
   ]);
+  if (!statsRes || !habitsRes) {
+    return;
+  }
+  showAppView();
 
   const stats = await statsRes.json();
   const habits = await habitsRes.json();
@@ -180,15 +263,18 @@ elements.habitForm.addEventListener('submit', async (e) => {
   const url = editingId ? `/api/habits/${editingId}` : '/api/habits';
   const method = editingId ? 'PUT' : 'POST';
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  if (!response) {
+    return;
+  }
 
   const data = await response.json();
   if (!response.ok) {
-    showFeedback(data.error || 'Não foi possível salvar o hábito.');
+    showFeedback((data.error && data.error.message) || 'Não foi possível salvar o hábito.');
     return;
   }
 
@@ -206,7 +292,7 @@ elements.habitsListContainer.addEventListener('click', async (e) => {
   const id = btn.getAttribute('data-id');
 
   if (action === 'checkin') {
-    await fetch(`/api/habits/${id}/checkin`, {
+    await apiFetch(`/api/habits/${id}/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -225,7 +311,7 @@ elements.habitsListContainer.addEventListener('click', async (e) => {
     elements.cancelEditBtn.hidden = false;
     elements.titleInput.focus();
   } else if (action === 'delete') {
-    await fetch(`/api/habits/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/habits/${id}`, { method: 'DELETE' });
     if (elements.habitIdInput.value === id) {
       resetFormMode();
     }
@@ -248,11 +334,108 @@ elements.statusFilter.addEventListener('change', (e) => {
   fetchDashboardAndHabits();
 });
 
+function setAuthMode(mode) {
+  state.authMode = mode;
+  const isRegister = mode === 'register';
+  elements.authHeading.textContent = isRegister ? 'Criar conta' : 'Entrar';
+  elements.authSubmitBtn.textContent = isRegister ? 'Criar conta' : 'Entrar';
+  elements.authSwitchText.textContent = isRegister ? 'Já tem conta?' : 'Ainda não tem conta?';
+  elements.authSwitchBtn.textContent = isRegister ? 'Entrar' : 'Criar conta';
+  elements.nameField.hidden = !isRegister;
+  elements.passwordInput.autocomplete = isRegister ? 'new-password' : 'current-password';
+  elements.authFeedback.hidden = true;
+}
+
+elements.authSwitchBtn.addEventListener('click', () => {
+  setAuthMode(state.authMode === 'login' ? 'register' : 'login');
+});
+
+elements.authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  elements.authFeedback.hidden = true;
+
+  const payload = {
+    email: elements.emailInput.value,
+    password: elements.passwordInput.value,
+  };
+  if (state.authMode === 'register') {
+    payload.name = elements.nameInput.value;
+  }
+
+  const response = await fetch(`/api/auth/${state.authMode}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    elements.authFeedback.textContent =
+      (data.error && data.error.message) || 'Não foi possível entrar.';
+    elements.authFeedback.hidden = false;
+    return;
+  }
+
+  saveSession(data);
+  elements.authForm.reset();
+  setAuthMode('login');
+  await fetchDashboardAndHabits();
+  await loadAccount();
+});
+
+elements.reminderToggle.addEventListener('change', async () => {
+  const response = await apiFetch('/api/account', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ remindersEnabled: elements.reminderToggle.checked }),
+  });
+  if (response && response.ok) {
+    elements.reminderToggle.checked = (await response.json()).remindersEnabled;
+  }
+});
+
+elements.logoutBtn.addEventListener('click', () => {
+  clearSession();
+  resetFormMode();
+  showAuthView();
+});
+
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+elements.exportBtn.addEventListener('click', async () => {
+  elements.exportFeedback.hidden = true;
+  const month = elements.exportMonthInput.value;
+  const response = await apiFetch(`/api/habits/export?month=${encodeURIComponent(month)}`);
+  if (!response) {
+    return;
+  }
+  if (!response.ok) {
+    const data = await response.json();
+    elements.exportFeedback.textContent =
+      (data.error && data.error.message) || 'Não foi possível exportar.';
+    elements.exportFeedback.hidden = false;
+    return;
+  }
+
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `habitflow-${month}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
+
 async function loadVersion() {
   const response = await fetch('/api/health');
   const { version } = await response.json();
   elements.appVersion.textContent = `v${version}`;
 }
 
+elements.exportMonthInput.value = currentMonth();
 fetchDashboardAndHabits();
+loadAccount();
 loadVersion();
