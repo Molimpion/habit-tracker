@@ -196,4 +196,23 @@ stateDiagram-v2
 | `DELETE` | `/api/habits/:id` | Remove permanentemente um hábito e retorna o hábito removido | `200 OK` |
 | `POST` | `/api/habits/:id/checkin` | Marca ou desmarca (*toggle*) conclusão na data (`{ "date": "YYYY-MM-DD" }`, padrão: hoje) | `200 OK` |
 
-Erros seguem o formato `{ "error": "mensagem" }`: `400` para validação ou JSON inválido, `404` para hábito ou endpoint inexistente e `500` para falha inesperada. As mesmas rotas e respostas valem no modo demonstração, porque ele usa o mesmo `router.js`.
+Erros seguem um formato único, com um código estável para o cliente tratar e a mensagem em português:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "O título do hábito é obrigatório e deve ter pelo menos 3 caracteres.",
+    "fields": { "title": "O título do hábito é obrigatório e deve ter pelo menos 3 caracteres." }
+  }
+}
+```
+
+| Status | `code` | Quando |
+| :---: | :--- | :--- |
+| `400` | `VALIDATION_ERROR` | Campo inválido (`fields` indica qual) ou corpo que não é JSON válido (sem `fields`) |
+| `403` | `FORBIDDEN` | Caminho de arquivo estático fora de `src/public/` |
+| `404` | `NOT_FOUND` | Hábito, endpoint ou arquivo estático inexistente |
+| `500` | `INTERNAL_ERROR` | Falha inesperada; a mensagem é sempre genérica e não expõe o erro interno |
+
+As mesmas rotas e respostas valem no modo demonstração, porque ele usa o mesmo `router.js`.
