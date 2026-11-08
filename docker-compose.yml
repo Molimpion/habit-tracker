@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    init: true
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    volumes:
+      - habitflow-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  habitflow-data:
