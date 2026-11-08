@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test tests/habit.test.js tests/demo.test.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "repository": {
     "type": "git",
