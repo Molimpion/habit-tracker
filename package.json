@@ -4,8 +4,8 @@
   "description": "HabitFlow - Sistema de Gerenciamento e Monitoramento de Hábitos Diários (API REST + Dashboard Web)",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test tests/habit.test.js tests/demo.test.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test tests/habit.test.js tests/auth.test.js tests/demo.test.js",
     "lint": "eslint .",
     "prepare": "git config core.hooksPath .githooks || true"
   },

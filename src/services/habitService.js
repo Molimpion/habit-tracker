@@ -4,6 +4,7 @@ const {
   isValidDateFormat,
   calculateStreaks,
 } = require('../utils/streakCalculator');
+const { ValidationError, NotFoundError } = require('../utils/errors');
 
 const VALID_CATEGORIES = [
   'Saúde',
@@ -14,62 +15,9 @@ const VALID_CATEGORIES = [
   'Outros',
 ];
 
-class ValidationError extends Error {
-  constructor(message, field) {
-    super(message);
-    this.name = 'ValidationError';
-    this.statusCode = 400;
-    this.code = 'VALIDATION_ERROR';
-    this.fields = { [field]: message };
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'NotFoundError';
-    this.statusCode = 404;
-    this.code = 'NOT_FOUND';
-  }
-}
-
 class HabitService {
   constructor(storage) {
     this.storage = storage;
-    this.storage.seedIfNew(this._createSeedData());
-  }
-
-  _createSeedData() {
-    const today = getTodayISO();
-    return [
-      {
-        id: 'hab-01-eng-software',
-        title: 'Estudar Engenharia de Software e Git Flow',
-        description: 'Revisar requisitos, casos de uso e praticar commits atômicos diariamente.',
-        category: 'Estudos',
-        targetDaysPerWeek: 5,
-        completedDates: [today],
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'hab-02-hidratacao',
-        title: 'Beber 2.5L de Água',
-        description: 'Manter garrafa de água na mesa durante os estudos e trabalho.',
-        category: 'Saúde',
-        targetDaysPerWeek: 7,
-        completedDates: [today],
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'hab-03-leitura',
-        title: 'Ler 15 páginas de livro técnico',
-        description: 'Leitura focada em arquitetura limpa e boas práticas de código.',
-        category: 'Produtividade',
-        targetDaysPerWeek: 5,
-        completedDates: [],
-        createdAt: new Date().toISOString(),
-      },
-    ];
   }
 
   _findOrFail(id) {

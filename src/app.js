@@ -4,6 +4,8 @@ const path = require('path');
 const { URL } = require('url');
 const { HabitService } = require('./services/habitService');
 const { SqliteStorage } = require('./storage/sqliteStorage');
+const { AuthService } = require('./auth/authService');
+const { createAuthRouter } = require('./auth/authRouter');
 const {
   createApiRouter,
   parseJsonText,
@@ -33,7 +35,7 @@ function sendJson(res, statusCode, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   });
   res.end(body);
 }
@@ -59,11 +61,14 @@ function parseJsonBody(req) {
   });
 }
 
-function createAppServer(databaseFile) {
-  const habitService = new HabitService(
-    new SqliteStorage(databaseFile || DEFAULT_DATABASE_FILE)
-  );
-  const handleApiRequest = createApiRouter({ habitService, version });
+function createAppServer({ databaseFile, jwtSecret }) {
+  const storage = new SqliteStorage(databaseFile || DEFAULT_DATABASE_FILE);
+  const authService = new AuthService(storage, jwtSecret);
+  const handleAuthRequest = createAuthRouter(authService);
+  const handleApiRequest = createApiRouter({
+    habitServiceFor: (userId) => new HabitService(storage.forUser(userId)),
+    version,
+  });
   const publicDir = path.join(__dirname, 'public');
 
   const requestListener = async (req, res) => {
@@ -72,7 +77,7 @@ function createAppServer(databaseFile) {
         res.writeHead(204, {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         });
         return res.end();
       }
@@ -80,12 +85,22 @@ function createAppServer(databaseFile) {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const pathname = parsedUrl.pathname;
 
+      if (pathname.startsWith('/api/auth/')) {
+        const { status, payload } = await handleAuthRequest({
+          method: req.method,
+          pathname,
+          readBody: () => parseJsonBody(req),
+        });
+        return sendJson(res, status, payload);
+      }
+
       if (pathname.startsWith('/api/')) {
         const { status, payload } = await handleApiRequest({
           method: req.method,
           pathname,
           searchParams: parsedUrl.searchParams,
           readBody: () => parseJsonBody(req),
+          userId: authService.authenticate(req.headers.authorization),
         });
         return sendJson(res, status, payload);
       }

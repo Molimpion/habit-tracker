@@ -4,6 +4,8 @@ services:
     init: true
     ports:
       - "${HOST_PORT:-3000}:3000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no ambiente ou no arquivo .env}
     volumes:
       - habitflow-data:/app/data
     restart: unless-stopped

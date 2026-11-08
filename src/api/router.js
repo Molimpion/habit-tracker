@@ -27,8 +27,8 @@ function toErrorResponse(error) {
   return errorResponse(error.statusCode, error.code, error.message, error.fields);
 }
 
-function createApiRouter({ habitService, version }) {
-  async function route({ method, pathname, searchParams, readBody }) {
+function createApiRouter({ habitServiceFor, version }) {
+  async function route({ method, pathname, searchParams, readBody, userId }) {
     if (pathname === '/api/health' && method === 'GET') {
       return {
         status: 200,
@@ -40,6 +40,15 @@ function createApiRouter({ habitService, version }) {
         },
       };
     }
+
+    if (pathname !== '/api/habits' && !pathname.startsWith('/api/habits/')) {
+      return errorResponse(404, 'NOT_FOUND', 'Endpoint da API não encontrado.');
+    }
+
+    if (!userId) {
+      return errorResponse(401, 'UNAUTHORIZED', 'Faça login para continuar.');
+    }
+    const habitService = habitServiceFor(userId);
 
     if (pathname === '/api/habits/stats' && method === 'GET') {
       return { status: 200, payload: habitService.getDashboardStats() };

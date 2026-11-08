@@ -12,6 +12,7 @@ function createDemoFetch(handleApiRequest, fallbackFetch) {
       pathname: url.pathname,
       searchParams: url.searchParams,
       readBody: async () => parseJsonText(init.body),
+      userId: 'demo',
     });
 
     return new Response(JSON.stringify(payload), {

@@ -18,6 +18,7 @@ const {
 const { SqliteStorage } = require('../src/storage/sqliteStorage');
 const { createAppServer } = require('../src/app');
 const { createApiRouter } = require('../src/api/router');
+const { AuthService } = require('../src/auth/authService');
 
 function tempDatabaseFile(prefix) {
   return path.join(
@@ -26,8 +27,23 @@ function tempDatabaseFile(prefix) {
   );
 }
 
-function createEmptyDatabase(file) {
-  new SqliteStorage(file).close();
+const TEST_USER_ID = 'usr-teste';
+const TEST_SECRET = 'segredo-de-teste-com-mais-de-32-caracteres';
+
+function createUserStore(file) {
+  const storage = new SqliteStorage(file);
+  storage.createUser({
+    id: TEST_USER_ID,
+    name: 'Pessoa de Teste',
+    email: 'teste@exemplo.com',
+    passwordHash: 'sem-login-nos-testes-de-habito',
+    createdAt: new Date().toISOString(),
+  });
+  return storage.forUser(TEST_USER_ID);
+}
+
+function reopenUserStore(file) {
+  return new SqliteStorage(file).forUser(TEST_USER_ID);
 }
 
 function removeDatabase(file) {
@@ -94,34 +110,24 @@ describe('HabitService — Persistência em SQLite ([RNF02])', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('deve criar o diretório e o banco com 3 hábitos de exemplo quando ainda não existem', () => {
+  it('deve criar o diretório do banco quando ainda não existe', () => {
     const dataFile = path.join(tempDir, 'nested', 'habitflow.db');
-    new HabitService(new SqliteStorage(dataFile));
+    new SqliteStorage(dataFile).close();
 
-    assert.deepEqual(
-      new SqliteStorage(dataFile).list().map((h) => h.id),
-      ['hab-01-eng-software', 'hab-02-hidratacao', 'hab-03-leitura']
-    );
-  });
-
-  it('não deve recriar os hábitos de exemplo num banco já existente', () => {
-    const dataFile = path.join(tempDir, 'habitflow.db');
-    createEmptyDatabase(dataFile);
-    new HabitService(new SqliteStorage(dataFile));
-
-    assert.deepEqual(new SqliteStorage(dataFile).list(), []);
+    assert.equal(fs.existsSync(dataFile), true);
   });
 
   it('deve persistir todos os check-ins gravados ao mesmo tempo por processos diferentes', async () => {
     const dataFile = path.join(tempDir, 'habitflow.db');
-    createEmptyDatabase(dataFile);
-    const { id } = new HabitService(new SqliteStorage(dataFile)).createHabit({ title: 'Correr 5km' });
+    const { id } = new HabitService(createUserStore(dataFile)).createHabit({ title: 'Correr 5km' });
     const months = ['01', '02', '03', '04'];
 
     const writer = (month) => `
       const { HabitService } = require(${JSON.stringify(path.join(__dirname, '../src/services/habitService'))});
       const { SqliteStorage } = require(${JSON.stringify(path.join(__dirname, '../src/storage/sqliteStorage'))});
-      const service = new HabitService(new SqliteStorage(${JSON.stringify(dataFile)}));
+      const service = new HabitService(
+        new SqliteStorage(${JSON.stringify(dataFile)}).forUser(${JSON.stringify(TEST_USER_ID)})
+      );
       for (let day = 1; day <= 28; day++) {
         service.toggleCheckIn(${JSON.stringify(id)}, '2026-${month}-' + String(day).padStart(2, '0'));
       }
@@ -136,7 +142,7 @@ describe('HabitService — Persistência em SQLite ([RNF02])', () => {
     );
 
     assert.deepEqual(exitCodes, [0, 0, 0, 0]);
-    assert.equal(new SqliteStorage(dataFile).findById(id).completedDates.length, 4 * 28);
+    assert.equal(reopenUserStore(dataFile).findById(id).completedDates.length, 4 * 28);
   });
 });
 
@@ -146,8 +152,7 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
 
   beforeEach(() => {
     tempFile = tempDatabaseFile('test');
-    createEmptyDatabase(tempFile);
-    service = new HabitService(new SqliteStorage(tempFile));
+    service = new HabitService(createUserStore(tempFile));
   });
 
   afterEach(() => {
@@ -174,7 +179,7 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
 
   it('deve manter o hábito cadastrado ao recarregar o serviço a partir do banco ([RNF02])', () => {
     const created = service.createHabit({ title: 'Alongar pela manhã' });
-    const reloaded = new HabitService(new SqliteStorage(tempFile)).getAllHabits();
+    const reloaded = new HabitService(reopenUserStore(tempFile)).getAllHabits();
     assert.deepEqual(reloaded.map((h) => h.id), [created.id]);
   });
 
@@ -331,6 +336,7 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
 describe('API HTTP — Integração das rotas REST', () => {
   let tempFile;
   let server;
+  let token;
 
   function invokeApi(method, url, bodyObj = null) {
     return new Promise((resolve, reject) => {
@@ -343,7 +349,11 @@ describe('API HTTP — Integração das rotas REST', () => {
       });
       req.method = method;
       req.url = url;
-      req.headers = { host: 'localhost', 'content-type': 'application/json' };
+      req.headers = {
+        host: 'localhost',
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      };
 
       const res = {
         statusCode: 200,
@@ -366,8 +376,12 @@ describe('API HTTP — Integração das rotas REST', () => {
 
   beforeEach(() => {
     tempFile = tempDatabaseFile('api');
-    createEmptyDatabase(tempFile);
-    server = createAppServer(tempFile);
+    server = createAppServer({ databaseFile: tempFile, jwtSecret: TEST_SECRET });
+    token = new AuthService(new SqliteStorage(tempFile), TEST_SECRET).register({
+      name: 'Pessoa de Teste',
+      email: 'teste@exemplo.com',
+      password: '12345678',
+    }).token;
   });
 
   afterEach(() => {
@@ -423,7 +437,7 @@ describe('API HTTP — Integração das rotas REST', () => {
     });
     req.method = 'POST';
     req.url = '/api/habits';
-    req.headers = { host: 'localhost' };
+    req.headers = { host: 'localhost', authorization: `Bearer ${token}` };
     const result = await new Promise((resolve, reject) => {
       const res = {
         writeHead(status) {
@@ -493,9 +507,8 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
 
   beforeEach(() => {
     tempFile = tempDatabaseFile('err');
-    createEmptyDatabase(tempFile);
-    service = new HabitService(new SqliteStorage(tempFile));
-    handleApiRequest = createApiRouter({ habitService: service, version: 'test' });
+    service = new HabitService(createUserStore(tempFile));
+    handleApiRequest = createApiRouter({ habitServiceFor: () => service, version: 'test' });
   });
 
   afterEach(() => {
@@ -508,6 +521,7 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
       pathname,
       searchParams: new URLSearchParams(),
       readBody: async () => body || {},
+      userId: TEST_USER_ID,
     });
   }
 
@@ -532,11 +546,11 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
 
   it('responde 500 com mensagem genérica sem expor o erro interno', async () => {
     const failingRouter = createApiRouter({
-      habitService: {
+      habitServiceFor: () => ({
         getAllHabits() {
           throw new Error('EACCES: permission denied, open /srv/segredo.json');
         },
-      },
+      }),
       version: 'test',
     });
     const res = await failingRouter({
@@ -544,6 +558,7 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
       pathname: '/api/habits',
       searchParams: new URLSearchParams(),
       readBody: async () => ({}),
+      userId: TEST_USER_ID,
     });
     assert.equal(res.status, 500);
     assert.deepEqual(res.payload, {
@@ -552,7 +567,7 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
   });
 
   it('responde 404 no mesmo formato para arquivo estático inexistente', async () => {
-    const server = createAppServer(tempFile);
+    const server = createAppServer({ databaseFile: tempFile, jwtSecret: TEST_SECRET });
     const result = await new Promise((resolve, reject) => {
       const res = {
         writeHead(status) {
