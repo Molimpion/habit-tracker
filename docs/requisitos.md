@@ -28,11 +28,11 @@ Os Requisitos Não Funcionais definem os atributos de qualidade, restrições t�
 | Código | Categoria | Descrição Detalhada | Critério de Verificação |
 | :--- | :--- | :--- | :--- |
 | **[RNF01]** | Desempenho | As rotas da API REST devem responder às requisições locais em tempo inferior a **100ms** para cargas de até 1.000 hábitos registrados. | Testes de integração e inspeção de tempo de resposta HTTP. |
-| **[RNF02]** | Persistência | Os dados de hábitos e histórico de *check-ins* devem ser persistidos em disco em formato estruturado (`JSON`), garantindo que nenhuma informação seja perdida ao reiniciar o servidor. | Reinicialização do serviço mantendo os dados salvos em `data/habits.json`. |
+| **[RNF02]** | Persistência | Os dados de hábitos e histórico de *check-ins* devem ser persistidos em disco num banco SQLite, garantindo que nenhuma informação seja perdida ao reiniciar o servidor nem quando dois processos gravam ao mesmo tempo. | Reinicialização do serviço mantendo os dados salvos em `data/habitflow.db`; check-ins simultâneos de processos diferentes todos persistidos. |
 | **[RNF03]** | Usabilidade e Responsividade | A interface web deve ser responsiva (adaptando-se a telas desktop a partir de 1024px e dispositivos móveis a partir de 360px) e permitir registrar um *check-in* diário com apenas **1 clique**. | Inspeção visual em diferentes resoluções e fluxo de clique único no card do hábito. |
 | **[RNF04]** | Manutenibilidade e Padrão de Código | O código-fonte deve ser modularizado em camadas (Rotas/Controllers, Serviços/Regras de Negócio e Persistência), utilizando nomenclatura clara e sem dependências desnecessárias. | Revisão da árvore de diretórios em `src/` e separação entre `habitService` e `server`. |
 | **[RNF05]** | Confiabilidade e Tratamento de Erros | A API deve utilizar códigos de status HTTP semânticos (`200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`) e nunca expor *stack traces* brutos ao usuário final. | Execução da suíte de testes automatizados verificando cenários de erro. |
-| **[RNF06]** | Portabilidade | O sistema deve ser executável em qualquer sistema operacional (Windows, Linux ou macOS) que possua Node.js (v18+) instalado, sem exigir instalação de SGBDs externos pesados. | Execução limpa via `npm install && npm start` em qualquer ambiente Node.js. |
+| **[RNF06]** | Portabilidade | O sistema deve ser executável em qualquer sistema operacional (Windows, Linux ou macOS) que possua Node.js (v22.13+) instalado, sem exigir instalação de SGBDs externos pesados (o SQLite é embutido no Node). | Execução limpa via `npm install && npm start` em qualquer ambiente Node.js. |
 
 ---
 

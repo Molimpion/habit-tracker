@@ -14,8 +14,8 @@ O **HabitFlow** adota uma arquitetura em camadas enxuta, com dois pontos de troc
    - **Modo demonstração (`src/demo/`):** no GitHub Pages, `boot.js` carrega os módulos no navegador e substitui o `fetch` de `/api/*` por `demoFetch.js`, que chama o mesmo roteador.
 3. **Roteador da API (`src/api/router.js`):** função pura `createApiRouter({ habitService, version })` que recebe método, caminho, parâmetros e o corpo da requisição e devolve `{ status, payload }`. Concentra rotas, códigos de status e o formato das mensagens de erro, sem depender de `http`.
 4. **Camada de Negócio (`src/services/habitService.js` & `src/utils/streakCalculator.js`):** isola as validações, as regras de negócio e o algoritmo de cálculo de ofensivas (*streaks*). O `HabitService` recebe o armazenamento por injeção e não conhece arquivo nem navegador.
-5. **Adaptadores de armazenamento (`src/storage/`):** implementam `load()` (retorna `null` quando ainda não há dados, o que dispara a carga dos hábitos de exemplo) e `save(habits)`.
-   - **`JsonFileStorage`:** grava em `data/habits.json` (servidor Node).
+5. **Adaptadores de armazenamento (`src/storage/`):** implementam operações por registro (`list`, `findById`, `insert`, `update`, `remove`, `addCheckIn`, `removeCheckIn`) e `seedIfNew(habits)`, que grava os hábitos de exemplo só quando o armazenamento acabou de ser criado.
+   - **`SqliteStorage`:** banco SQLite com o módulo nativo `node:sqlite`, em `data/habitflow.db` ou no caminho de `DATABASE_FILE` (servidor Node). Hábitos e check-ins ficam em tabelas separadas; cada check-in é uma linha, então escritas simultâneas de processos diferentes não se sobrescrevem.
    - **`LocalStorageStorage`:** grava no `localStorage` do navegador (GitHub Pages).
 
 ### 1.1 Containers
@@ -28,7 +28,7 @@ flowchart TB
         UI1["Dashboard SPA<br/>(src/public)"]
         HTTP["Servidor HTTP<br/>(src/app.js)"]
         Core1["Roteador + HabitService<br/>+ StreakCalculator"]
-        File[("data/habits.json")]
+        File[("SQLite<br/>data/habitflow.db")]
     end
 
     subgraph Pages ["GitHub Pages: modo demonstração (só arquivos estáticos)"]
@@ -58,8 +58,8 @@ flowchart LR
     Router["router.js<br/>createApiRouter"]
     Service["HabitService"]
     Streak["StreakCalculator"]
-    Port{{"Armazenamento<br/>load() / save()"}}
-    FileStorage["JsonFileStorage"]
+    Port{{"Armazenamento<br/>list / findById / insert<br/>update / remove / check-ins"}}
+    FileStorage["SqliteStorage"]
     WebStorage["LocalStorageStorage"]
 
     App -->|"handleApiRequest"| Router
@@ -92,21 +92,25 @@ classDiagram
 
     class HabitStorage {
         <<interface>>
-        +load() Habit[] | null
-        +save(habits) void
+        +seedIfNew(habits) void
+        +list() Habit[]
+        +findById(id) Habit | null
+        +insert(habit) void
+        +update(habit) void
+        +remove(id) void
+        +addCheckIn(id, date) void
+        +removeCheckIn(id, date) void
     }
 
-    class JsonFileStorage {
-        -String filePath
-        +load() Habit[] | null
-        +save(habits) void
+    class SqliteStorage {
+        -DatabaseSync db
+        -Boolean isNew
+        +close() void
     }
 
     class LocalStorageStorage {
         -Storage webStorage
         -String key
-        +load() Habit[] | null
-        +save(habits) void
     }
 
     class HabitService {
@@ -154,7 +158,7 @@ classDiagram
         +Number totalCheckIns
     }
 
-    JsonFileStorage ..|> HabitStorage
+    SqliteStorage ..|> HabitStorage
     LocalStorageStorage ..|> HabitStorage
     HabitService --> HabitStorage : persiste via
     HabitService --> Habit : gerencia
