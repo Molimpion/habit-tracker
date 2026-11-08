@@ -103,11 +103,12 @@ habit-tracker/
 ├── data/
 │   └── .gitkeep                     # Diretório do banco local (habitflow.db)
 ├── .githooks/pre-commit            # Lint e testes antes de cada commit (ativado pelo npm install)
-├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes com cobertura mínima de 85% em Node 22)
+├── .github/workflows/ci.yml         # Pipeline de CI (lint, testes com cobertura mínima de 85%, gitleaks e npm audit)
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── Dockerfile                       # Imagem Node 22 alpine, usuário não-root, sem dependências de desenvolvimento
 ├── docker-compose.yml               # Serviço da aplicação com volume para o banco SQLite
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
+├── .gitleaksignore                  # Falsos positivos do gitleaks no histórico (segredo fixo de teste antigo)
 ├── eslint.config.js                 # Regras do ESLint (Node e navegador)
 ├── LICENSE                          # Licença MIT
 ├── package.json                     # Manifesto do projeto e scripts npm
@@ -153,6 +154,10 @@ habit-tracker/
    - **Dashboard Web Interativo:** `http://localhost:3000`
    - **Healthcheck da API:** `http://localhost:3000/api/health`
    - **Estatísticas JSON:** `http://localhost:3000/api/habits/stats`
+
+### Verificações de segurança no CI
+
+Todo push e PR roda o **gitleaks** no histórico inteiro e o **npm audit** em duas regras: qualquer vulnerabilidade numa dependência de execução barra o pipeline; nas de desenvolvimento, só as de nível alto ou crítico. Risco aceito: o ESLint 10 traz uma vulnerabilidade moderada de negação de serviço no `minimatch`, que só roda na máquina de quem desenvolve.
 
 ### Lembrete por e-mail (opcional)
 

@@ -1,5 +1,6 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -11,7 +12,7 @@ const { AuthService } = require('../src/auth/authService');
 const { SqliteStorage } = require('../src/storage/sqliteStorage');
 const { createAppServer } = require('../src/app');
 
-const SECRET = 'segredo-de-teste-com-mais-de-32-caracteres';
+const SECRET = crypto.randomBytes(32).toString('hex');
 const NOW = 1_800_000_000;
 
 function tempDatabaseFile() {
