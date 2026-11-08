@@ -104,6 +104,8 @@ habit-tracker/
 │   └── .gitkeep                     # Diretório do banco local (habitflow.db)
 ├── .githooks/pre-commit            # Lint e testes antes de cada commit (ativado pelo npm install)
 ├── .github/workflows/ci.yml         # Pipeline de CI (lint, testes com cobertura mínima de 85%, gitleaks e npm audit)
+├── .github/ISSUE_TEMPLATE/         # Modelos de issue: bug, funcionalidade e documentação
+├── .github/PULL_REQUEST_TEMPLATE.md # Checklist de PR (Git Flow, commits, testes, docs)
 ├── .github/dependabot.yml           # PRs semanais de atualização de dependências npm e actions, em develop
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── Dockerfile                       # Imagem Node 22 alpine, usuário não-root, sem dependências de desenvolvimento
