@@ -18,6 +18,7 @@ Os Requisitos Funcionais descrevem os comportamentos, funcionalidades e regras d
 | **[RF06]** | Calcular Ofensiva (Streaks) | O sistema deve calcular automaticamente para cada hábito a sequência atual de dias consecutivos cumpridos (*current streak*) e o recorde histórico de dias consecutivos (*best streak*). | Alta | US05 / Issue #11 |
 | **[RF07]** | Exibir Dashboard de Estatísticas | O sistema deve disponibilizar um resumo consolidado contendo: total de hábitos ativos, total de hábitos concluídos hoje, taxa percentual de conclusão diária e maior ofensiva ativa do usuário. | Média | US05 / Issue #11 |
 | **[RF08]** | Validar Dados de Entrada | O sistema deve validar todas as requisições recebidas na API e no formulário web, retornando mensagens de erro claras (HTTP 400 / feedback visual) quando campos obrigatórios estiverem ausentes ou fora do formato esperado. | Alta | US01 / Issue #7 |
+| **[RF09]** | Autenticar Usuário | O sistema deve permitir criar conta (nome, e-mail único e senha de no mínimo 8 caracteres) e entrar com e-mail e senha, e cada usuário deve ver e alterar somente os próprios hábitos. | Alta | Issue #63 |
 
 ---
 
@@ -45,3 +46,4 @@ Os Requisitos Não Funcionais definem os atributos de qualidade, restrições t�
 | **RF03 / RF04** | UC03 - Manter Hábito (Editar/Excluir) | US03 | `src/services/habitService.js` | #9 |
 | **RF05** | UC04 - Registrar Check-in Diário | US04 | `src/services/habitService.js` | #10 |
 | **RF06 / RF07** | UC05 - Visualizar Estatísticas e Streaks | US05 | `src/utils/streakCalculator.js` | #11 |
+| **RF09** | — | — | `src/auth/`, `src/storage/sqliteStorage.js` | #63 |

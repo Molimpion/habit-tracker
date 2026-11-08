@@ -45,7 +45,7 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 | Dashboard web responsivo com cartões de estatísticas e barra de progresso | `RF07`, `RNF03` | Implementado | `v1.0.0` |
 | Suíte de testes automatizados (unitários e integração HTTP) e CI no GitHub Actions | `RNF05` | Implementado | `v1.0.0` |
 | Modo demonstração no GitHub Pages com dados no `localStorage` do navegador | `RNF03`, `RNF06` | Implementado | `v1.1.0` |
-| Autenticação multiusuário com JWT / OAuth2 | Backlog Futuro | Planejado | `v2.0.0` |
+| Autenticação multiusuário com JWT e isolamento dos hábitos por usuário | `RF09` | Implementado | `v2.0.0` |
 | Notificações push / lembretes por e-mail e WhatsApp | Backlog Futuro | Planejado | `v2.1.0` |
 | Exportação de relatórios mensais em PDF/CSV | Backlog Futuro | Planejado | `v2.2.0` |
 
@@ -66,6 +66,10 @@ habit-tracker/
 │   │   ├── index.html
 │   │   ├── styles.css
 │   │   └── app.client.js
+│   ├── auth/
+│   │   ├── authService.js           # Cadastro, login (scrypt) e validação do token
+│   │   ├── authRouter.js            # Rotas /api/auth/register e /api/auth/login
+│   │   └── jwt.js                   # JWT HS256 com crypto nativo
 │   ├── api/
 │   │   └── router.js                # Rotas /api/* como função pura (usada pelo servidor e pelo modo demo)
 │   ├── services/
@@ -75,8 +79,10 @@ habit-tracker/
 │   │   └── localStorageStorage.js   # Adapter de armazenamento no localStorage (navegador)
 │   ├── demo/
 │   │   ├── boot.js                  # Carrega os módulos no navegador e substitui o fetch de /api/*
+│   │   ├── seedHabits.js            # Hábitos de exemplo da primeira visita à demo
 │   │   └── demoFetch.js             # Encaminha chamadas /api/* para o roteador
 │   ├── utils/
+│   │   ├── errors.js                # Erros com status HTTP e código estável (VALIDATION_ERROR, NOT_FOUND...)
 │   │   └── streakCalculator.js      # Motor matemático de cálculo de streaks e datas
 │   ├── app.js                       # Servidor HTTP: CORS, leitura do corpo e arquivos estáticos
 │   └── server.js                    # Ponto de entrada da aplicação
@@ -84,6 +90,7 @@ habit-tracker/
 │   └── build-pages.sh               # Monta o site do modo demonstração em _site/
 ├── tests/
 │   ├── habit.test.js                # Testes automatizados (Unitários + API REST)
+│   ├── auth.test.js                 # JWT, cadastro, login e isolamento entre usuários
 │   └── demo.test.js                 # Testes do modo demonstração e do adapter do navegador
 ├── data/
 │   └── .gitkeep                     # Diretório do banco local (habitflow.db)
@@ -128,9 +135,9 @@ habit-tracker/
    npm test
    ```
 
-4. **Inicie o servidor da aplicação:**
+4. **Inicie o servidor da aplicação.** O servidor não sobe sem a variável `JWT_SECRET`, que assina os tokens de login. O `npm start` lê as variáveis do arquivo `.env` na raiz, se ele existir; também dá para defini-la no próprio comando:
    ```bash
-   npm start
+   JWT_SECRET="um-segredo-longo-e-aleatorio" npm start
    ```
 
 5. **Acesse no navegador:**
@@ -146,7 +153,7 @@ Não exige Node instalado, só Docker com o Compose:
 docker compose up -d --build
 ```
 
-O dashboard abre em `http://localhost:3000` (para usar outra porta: `HOST_PORT=8080 docker compose up -d`). O banco SQLite fica no volume `habitflow-data` e sobrevive a `docker compose down`; `docker compose down -v` apaga os dados.
+O compose exige `JWT_SECRET`, lida do ambiente ou do arquivo `.env` na raiz. O dashboard abre em `http://localhost:3000` (para usar outra porta: `HOST_PORT=8080 docker compose up -d`). O banco SQLite fica no volume `habitflow-data` e sobrevive a `docker compose down`; `docker compose down -v` apaga os dados.
 
 ---
 

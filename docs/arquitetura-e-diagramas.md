@@ -10,7 +10,7 @@ O **HabitFlow** adota uma arquitetura em camadas enxuta, com dois pontos de troc
 
 1. **Camada de Apresentação (`src/public/`):** Aplicação Web Single-Page responsiva construída com HTML5 semântico, CSS3 moderno (Grid/Flexbox) e JavaScript ES6+ que consome a API REST via `fetch`.
 2. **Adaptadores de entrada:**
-   - **Servidor HTTP (`src/app.js`):** módulo `http` nativo do Node.js; cuida de CORS, leitura do corpo da requisição e entrega dos arquivos estáticos, e delega tudo que começa com `/api/` ao roteador.
+   - **Servidor HTTP (`src/app.js`):** módulo `http` nativo do Node.js; cuida de CORS, leitura do corpo da requisição e entrega dos arquivos estáticos. Encaminha `/api/auth/*` ao roteador de autenticação (`src/auth/`) e o resto de `/api/` ao roteador da API, junto com o usuário extraído do token.
    - **Modo demonstração (`src/demo/`):** no GitHub Pages, `boot.js` carrega os módulos no navegador e substitui o `fetch` de `/api/*` por `demoFetch.js`, que chama o mesmo roteador.
 3. **Roteador da API (`src/api/router.js`):** função pura `createApiRouter({ habitService, version })` que recebe método, caminho, parâmetros e o corpo da requisição e devolve `{ status, payload }`. Concentra rotas, códigos de status e o formato das mensagens de erro, sem depender de `http`.
 4. **Camada de Negócio (`src/services/habitService.js` & `src/utils/streakCalculator.js`):** isola as validações, as regras de negócio e o algoritmo de cálculo de ofensivas (*streaks*). O `HabitService` recebe o armazenamento por injeção e não conhece arquivo nem navegador.
@@ -191,7 +191,9 @@ stateDiagram-v2
 
 | Método | Rota | Descrição | Status de Sucesso |
 | :---: | :--- | :--- | :---: |
-| `GET` | `/api/health` | Verifica integridade e versão da API | `200 OK` |
+| `POST` | `/api/auth/register` | Cria a conta (`{ name, email, password }`) e devolve `{ token, user }` | `201 Created` |
+| `POST` | `/api/auth/login` | Autentica (`{ email, password }`) e devolve `{ token, user }` | `200 OK` |
+| `GET` | `/api/health` | Verifica integridade e versão da API (pública) | `200 OK` |
 | `GET` | `/api/habits` | Lista hábitos (suporta `?category=`, `?status=completed\|pending` e `?search=`) | `200 OK` |
 | `GET` | `/api/habits/stats` | Retorna estatísticas globais para o Dashboard | `200 OK` |
 | `GET` | `/api/habits/:id` | Busca detalhes e histórico de um hábito específico | `200 OK` |
@@ -199,6 +201,8 @@ stateDiagram-v2
 | `PUT` | `/api/habits/:id` | Atualiza título, descrição, categoria ou meta semanal | `200 OK` |
 | `DELETE` | `/api/habits/:id` | Remove permanentemente um hábito e retorna o hábito removido | `200 OK` |
 | `POST` | `/api/habits/:id/checkin` | Marca ou desmarca (*toggle*) conclusão na data (`{ "date": "YYYY-MM-DD" }`, padrão: hoje) | `200 OK` |
+
+Todas as rotas `/api/habits*` exigem o cabeçalho `Authorization: Bearer <token>` e enxergam só os hábitos do usuário do token; hábito de outro usuário responde `404`, como se não existisse. O token é um JWT HS256 assinado com `JWT_SECRET` e expira em 24 horas. A senha é guardada com hash `scrypt` e salt aleatório, e o usuário devolvido pela API tem só `id`, `name` e `email`. No modo demonstração não há login: o `demoFetch` envia sempre o usuário local `demo`.
 
 Erros seguem um formato único, com um código estável para o cliente tratar e a mensagem em português:
 
@@ -215,8 +219,10 @@ Erros seguem um formato único, com um código estável para o cliente tratar e 
 | Status | `code` | Quando |
 | :---: | :--- | :--- |
 | `400` | `VALIDATION_ERROR` | Campo inválido (`fields` indica qual) ou corpo que não é JSON válido (sem `fields`) |
+| `401` | `UNAUTHORIZED` | Rota de hábito sem token válido, ou e-mail ou senha inválidos no login |
 | `403` | `FORBIDDEN` | Caminho de arquivo estático fora de `src/public/` |
 | `404` | `NOT_FOUND` | Hábito, endpoint ou arquivo estático inexistente |
+| `409` | `CONFLICT` | Cadastro com e-mail que já tem conta |
 | `500` | `INTERNAL_ERROR` | Falha inesperada; a mensagem é sempre genérica e não expõe o erro interno |
 
 As mesmas rotas e respostas valem no modo demonstração, porque ele usa o mesmo `router.js`.
