@@ -4,6 +4,8 @@ Todas as mudanças relevantes do HabitFlow ficam registradas aqui, no formato [K
 
 ## [Não publicado]
 
+## [2.0.0] - 2026-11-07
+
 ### Adicionado
 - Cadastro, login e JWT HS256 com `crypto` nativo; cada usuário vê e altera só os próprios hábitos (#63).
 - Telas de entrar e criar conta, sessão e botão Sair no dashboard (#63).
@@ -27,6 +29,9 @@ Todas as mudanças relevantes do HabitFlow ficam registradas aqui, no formato [K
 
 ### Removido
 - Adapter de armazenamento em arquivo JSON (#66).
+
+### Corrigido
+- Workflow do GitHub Pages instala as dependências antes dos testes (#95).
 
 ## [1.2.0] - 2026-11-06
 
@@ -80,7 +85,8 @@ Todas as mudanças relevantes do HabitFlow ficam registradas aqui, no formato [K
 ### Adicionado
 - Estrutura inicial do projeto (#1), termo de abertura (#2), requisitos (#3), casos de uso (#4), user stories (#5) e arquitetura (#6).
 
-[Não publicado]: https://github.com/Molimpion/habit-tracker/compare/v1.2.0...develop
+[Não publicado]: https://github.com/Molimpion/habit-tracker/compare/v2.0.0...develop
+[2.0.0]: https://github.com/Molimpion/habit-tracker/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/Molimpion/habit-tracker/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/Molimpion/habit-tracker/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/Molimpion/habit-tracker/compare/v1.1.0...v1.1.1
