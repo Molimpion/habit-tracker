@@ -90,6 +90,8 @@ habit-tracker/
 ├── .githooks/pre-commit            # Lint e testes antes de cada commit (ativado pelo npm install)
 ├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes em Node 22)
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
+├── Dockerfile                       # Imagem Node 22 alpine, usuário não-root, sem dependências de desenvolvimento
+├── docker-compose.yml               # Serviço da aplicação com volume para o banco SQLite
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 ├── eslint.config.js                 # Regras do ESLint (Node e navegador)
 ├── LICENSE                          # Licença MIT
@@ -135,6 +137,16 @@ habit-tracker/
    - **Dashboard Web Interativo:** `http://localhost:3000`
    - **Healthcheck da API:** `http://localhost:3000/api/health`
    - **Estatísticas JSON:** `http://localhost:3000/api/habits/stats`
+
+### Execução com Docker
+
+Não exige Node instalado, só Docker com o Compose:
+
+```bash
+docker compose up -d --build
+```
+
+O dashboard abre em `http://localhost:3000` (para usar outra porta: `HOST_PORT=8080 docker compose up -d`). O banco SQLite fica no volume `habitflow-data` e sobrevive a `docker compose down`; `docker compose down -v` apaga os dados.
 
 ---
 

@@ -1,0 +1,11 @@
+.git
+.github
+.githooks
+node_modules
+data
+_site
+coverage
+docs
+tests
+scripts
+*.md
