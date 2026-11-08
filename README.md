@@ -108,6 +108,7 @@ habit-tracker/
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── Dockerfile                       # Imagem Node 22 alpine, usuário não-root, sem dependências de desenvolvimento
 ├── docker-compose.yml               # Serviço da aplicação com volume para o banco SQLite
+├── .env.example                     # Modelo das variáveis de ambiente, sem valores reais
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 ├── .gitleaksignore                  # Falsos positivos do gitleaks no histórico (segredo fixo de teste antigo)
 ├── eslint.config.js                 # Regras do ESLint (Node e navegador)
@@ -146,15 +147,33 @@ habit-tracker/
    npm run test:coverage   # mesma suíte com relatório de cobertura; falha abaixo de 85% das linhas
    ```
 
-4. **Inicie o servidor da aplicação.** O servidor não sobe sem a variável `JWT_SECRET`, que assina os tokens de login. O `npm start` lê as variáveis do arquivo `.env` na raiz, se ele existir; também dá para defini-la no próprio comando:
+4. **Configure as variáveis de ambiente** copiando o exemplo (o `.env` não é versionado). Com a cópia sem alterações o app já roda, mas o servidor avisa que o `JWT_SECRET` é o valor de exemplo; troque-o por um segredo gerado com `openssl rand -hex 32`:
    ```bash
-   JWT_SECRET="um-segredo-longo-e-aleatorio" npm start
+   cp .env.example .env
    ```
 
-5. **Acesse no navegador:**
+5. **Inicie o servidor da aplicação** (o `npm start` lê o `.env` da raiz):
+   ```bash
+   npm start
+   ```
+
+6. **Acesse no navegador:**
    - **Dashboard Web Interativo:** `http://localhost:3000`
    - **Healthcheck da API:** `http://localhost:3000/api/health`
    - **Estatísticas JSON:** `http://localhost:3000/api/habits/stats`
+
+### Variáveis de ambiente
+
+| Variável | Obrigatória | Padrão | Para que serve |
+| :--- | :---: | :--- | :--- |
+| `JWT_SECRET` | Sim | — | Assina os tokens de login. Sem ela o servidor não sobe; com o valor de exemplo, sobe com aviso |
+| `PORT` | Não | `3000` | Porta HTTP do servidor |
+| `DATABASE_FILE` | Não | `data/habitflow.db` | Caminho do banco SQLite |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Só para lembretes | — | Servidor de e-mail do lembrete diário; sem as cinco, os lembretes ficam desligados |
+| `REMINDER_HOUR` | Não | `20` | Hora (0 a 23) a partir da qual o lembrete é enviado |
+| `HOST_PORT`, `TZ` | Só no Docker | `3000`, `America/Recife` | Porta publicada no host e fuso horário do container |
+
+O `.env.example` traz todas elas sem valores reais. Segredos ficam só no `.env` local, que o `.gitignore` exclui.
 
 ### Verificações de segurança no CI
 

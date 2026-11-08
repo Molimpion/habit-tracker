@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Readable } = require('stream');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const { signToken, verifyToken } = require('../src/auth/jwt');
 const { AuthService } = require('../src/auth/authService');
@@ -338,6 +338,34 @@ describe('API HTTP — autenticação e isolamento por usuário ([AUTH-200])', (
 });
 
 describe('Inicialização do servidor', () => {
+  it('avisa quando JWT_SECRET ainda é o valor de exemplo', async () => {
+    const env = {
+      PATH: process.env.PATH,
+      PORT: '0',
+      JWT_SECRET: 'troque-por-um-segredo-aleatorio',
+      DATABASE_FILE: tempDatabaseFile(),
+    };
+    const child = spawn(process.execPath, [path.join(__dirname, '../src/server.js')], { env });
+    let output = '';
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 5000);
+      const collect = (chunk) => {
+        output += chunk;
+        if (output.includes('HabitFlow rodando')) {
+          clearTimeout(timer);
+          resolve();
+        }
+      };
+      child.stdout.on('data', collect);
+      child.stderr.on('data', collect);
+    });
+    child.kill();
+    removeDatabase(env.DATABASE_FILE);
+
+    assert.match(output, /JWT_SECRET ainda é o valor de exemplo/);
+    assert.match(output, /HabitFlow rodando/);
+  });
+
   it('recusa iniciar sem JWT_SECRET e explica o que falta', () => {
     const env = { ...process.env, PORT: '0', DATABASE_FILE: tempDatabaseFile() };
     delete env.JWT_SECRET;
