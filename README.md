@@ -4,7 +4,7 @@
 [![Licença](https://img.shields.io/github/license/Molimpion/habit-tracker?label=licen%C3%A7a)](./LICENSE)
 [![CI](https://github.com/Molimpion/habit-tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Molimpion/habit-tracker/actions/workflows/ci.yml)
 [![Pages](https://github.com/Molimpion/habit-tracker/actions/workflows/pages.yml/badge.svg?branch=main)](https://molimpion.github.io/habit-tracker/)
-![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-339933.svg)
+![Node.js](https://img.shields.io/badge/node-%3E%3D22.13.0-339933.svg)
 ![Git Flow](https://img.shields.io/badge/workflow-Git%20Flow%20%2B%20SemVer-orange.svg)
 
 O **HabitFlow** é uma aplicação web full-stack (API RESTful + Dashboard Interativo) projetada para auxiliar estudantes e profissionais na construção e manutenção de hábitos diários. Ele resolve o problema da falta de visibilidade sobre a consistência pessoal, permitindo cadastrar hábitos por categoria, registrar *check-ins* diários com apenas **1 clique** e acompanhar automaticamente a ofensiva atual (*current streak*), o recorde histórico (*best streak*) e a taxa percentual de metas cumpridas no dia.
@@ -15,7 +15,7 @@ Este projeto foi desenvolvido aplicando rigorosamente o **Ciclo de Vida de Desen
 
 **https://molimpion.github.io/habit-tracker/**
 
-O GitHub Pages só serve arquivos estáticos, então a versão publicada roda em **modo demonstração**: o mesmo `HabitService`, o mesmo roteador da API e o mesmo cálculo de *streaks* do backend são carregados no navegador, e um `fetch` substituto encaminha as chamadas `/api/*` para eles. Os dados ficam no `localStorage` de quem acessa, sem servidor. Para usar a API Node com persistência em `data/habits.json`, siga a execução local abaixo.
+O GitHub Pages só serve arquivos estáticos, então a versão publicada roda em **modo demonstração**: o mesmo `HabitService`, o mesmo roteador da API e o mesmo cálculo de *streaks* do backend são carregados no navegador, e um `fetch` substituto encaminha as chamadas `/api/*` para eles. Os dados ficam no `localStorage` de quem acessa, sem servidor. Para usar a API Node com persistência em SQLite, siga a execução local abaixo.
 
 ---
 
@@ -71,7 +71,7 @@ habit-tracker/
 │   ├── services/
 │   │   └── habitService.js          # Regras de negócio e validações (recebe o adapter de armazenamento)
 │   ├── storage/
-│   │   ├── jsonFileStorage.js       # Adapter de armazenamento em data/habits.json (Node)
+│   │   ├── sqliteStorage.js         # Adapter de armazenamento em SQLite com node:sqlite (Node)
 │   │   └── localStorageStorage.js   # Adapter de armazenamento no localStorage (navegador)
 │   ├── demo/
 │   │   ├── boot.js                  # Carrega os módulos no navegador e substitui o fetch de /api/*
@@ -86,9 +86,9 @@ habit-tracker/
 │   ├── habit.test.js                # Testes automatizados (Unitários + API REST)
 │   └── demo.test.js                 # Testes do modo demonstração e do adapter do navegador
 ├── data/
-│   └── .gitkeep                     # Diretório de persistência local (habits.json)
+│   └── .gitkeep                     # Diretório do banco local (habitflow.db)
 ├── .githooks/pre-commit            # Lint e testes antes de cada commit (ativado pelo npm install)
-├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes em Node 20 e 22)
+├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes em Node 22)
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 ├── eslint.config.js                 # Regras do ESLint (Node e navegador)
@@ -102,10 +102,10 @@ habit-tracker/
 ## Configuração de Ambiente, Instalação e Execução Local
 
 ### Pré-requisitos
-- **Node.js** versão `18.0.0` ou superior instalado ([https://nodejs.org/](https://nodejs.org/)).
+- **Node.js** versão `22.13.0` ou superior instalado ([https://nodejs.org/](https://nodejs.org/)).
 - **Git** instalado.
 
-> **Portabilidade Total (`RNF06`):** Em execução, o projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:test`), sem dependências npm nem banco de dados externo. A única dependência é o ESLint, de desenvolvimento, usado no lint e no hook de pre-commit.
+> **Portabilidade Total (`RNF06`):** Em execução, o projeto usa apenas módulos nativos do Node.js (`node:http`, `node:fs`, `node:crypto`, `node:sqlite`, `node:test`), sem dependências npm nem servidor de banco de dados: o SQLite é um arquivo em `data/habitflow.db` (caminho configurável em `DATABASE_FILE`). No Node 22, o `node:sqlite` exibe um aviso de recurso experimental ao iniciar. A única dependência é o ESLint, de desenvolvimento, usado no lint e no hook de pre-commit.
 
 ### Passo a Passo
 

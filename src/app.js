@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const { HabitService } = require('./services/habitService');
-const { JsonFileStorage } = require('./storage/jsonFileStorage');
+const { SqliteStorage } = require('./storage/sqliteStorage');
 const {
   createApiRouter,
   parseJsonText,
@@ -12,7 +12,7 @@ const {
 } = require('./api/router');
 const { version } = require('../package.json');
 
-const DEFAULT_DATA_FILE = path.join(__dirname, '..', 'data', 'habits.json');
+const DEFAULT_DATABASE_FILE = path.join(__dirname, '..', 'data', 'habitflow.db');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -59,9 +59,9 @@ function parseJsonBody(req) {
   });
 }
 
-function createAppServer(customDataFile) {
+function createAppServer(databaseFile) {
   const habitService = new HabitService(
-    new JsonFileStorage(customDataFile || DEFAULT_DATA_FILE)
+    new SqliteStorage(databaseFile || DEFAULT_DATABASE_FILE)
   );
   const handleApiRequest = createApiRouter({ habitService, version });
   const publicDir = path.join(__dirname, 'public');
