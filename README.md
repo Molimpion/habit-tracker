@@ -103,7 +103,7 @@ habit-tracker/
 ├── data/
 │   └── .gitkeep                     # Diretório do banco local (habitflow.db)
 ├── .githooks/pre-commit            # Lint e testes antes de cada commit (ativado pelo npm install)
-├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes em Node 22)
+├── .github/workflows/ci.yml         # Pipeline de CI (lint e testes com cobertura mínima de 85% em Node 22)
 ├── .github/workflows/pages.yml      # Testa, monta e publica o modo demonstração no GitHub Pages
 ├── Dockerfile                       # Imagem Node 22 alpine, usuário não-root, sem dependências de desenvolvimento
 ├── docker-compose.yml               # Serviço da aplicação com volume para o banco SQLite
@@ -141,6 +141,7 @@ habit-tracker/
    ```bash
    npm run lint
    npm test
+   npm run test:coverage   # mesma suíte com relatório de cobertura; falha abaixo de 85% das linhas
    ```
 
 4. **Inicie o servidor da aplicação.** O servidor não sobe sem a variável `JWT_SECRET`, que assina os tokens de login. O `npm start` lê as variáveis do arquivo `.env` na raiz, se ele existir; também dá para defini-la no próprio comando:
