@@ -11,6 +11,8 @@ const SCHEMA = `
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    reminders_enabled INTEGER NOT NULL DEFAULT 0,
+    last_reminder_date TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS habits (
@@ -77,6 +79,54 @@ class SqliteStorage {
       passwordHash: row.password_hash,
       createdAt: row.created_at,
     };
+  }
+
+  getAccount(userId) {
+    const row = this.db
+      .prepare('SELECT name, email, reminders_enabled FROM users WHERE id = ?')
+      .get(userId);
+    return row
+      ? { name: row.name, email: row.email, remindersEnabled: row.reminders_enabled === 1 }
+      : null;
+  }
+
+  setRemindersEnabled(userId, enabled) {
+    this.db
+      .prepare('UPDATE users SET reminders_enabled = ? WHERE id = ?')
+      .run(enabled ? 1 : 0, userId);
+  }
+
+  listUsersToRemind(date) {
+    return this.db
+      .prepare(
+        `SELECT id, name, email, last_reminder_date FROM users
+          WHERE reminders_enabled = 1
+            AND (last_reminder_date IS NULL OR last_reminder_date < ?)`
+      )
+      .all(date)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        lastReminderDate: row.last_reminder_date,
+      }));
+  }
+
+  claimReminder(userId, date, previousDate) {
+    const { changes } = this.db
+      .prepare(
+        'UPDATE users SET last_reminder_date = ? WHERE id = ? AND last_reminder_date IS ?'
+      )
+      .run(date, userId, previousDate);
+    return changes === 1;
+  }
+
+  releaseReminder(userId, date, previousDate) {
+    this.db
+      .prepare(
+        'UPDATE users SET last_reminder_date = ? WHERE id = ? AND last_reminder_date = ?'
+      )
+      .run(previousDate, userId, date);
   }
 
   forUser(userId) {
