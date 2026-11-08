@@ -41,13 +41,28 @@ Os Requisitos Não Funcionais definem os atributos de qualidade, restrições t�
 
 ## 3. Matriz de Rastreabilidade
 
-| Requisito | Caso de Uso (`casos-de-uso.md`) | User Story (`user-stories.md`) | Módulo de Código (`src/`) | Issue no GitHub |
-| :---: | :---: | :---: | :--- | :---: |
-| **RF01 / RF08** | UC01 - Cadastrar Hábito | US01 | `src/services/habitService.js` | #7 |
-| **RF02** | UC02 - Consultar e Filtrar Hábitos | US02 | `src/services/habitService.js` | #8 |
-| **RF03 / RF04** | UC03 - Manter Hábito (Editar/Excluir) | US03 | `src/services/habitService.js` | #9 |
-| **RF05** | UC04 - Registrar Check-in Diário | US04 | `src/services/habitService.js` | #10 |
-| **RF06 / RF07** | UC05 - Visualizar Estatísticas e Streaks | US05 | `src/utils/streakCalculator.js` | #11 |
-| **RF09** | — | — | `src/auth/`, `src/storage/sqliteStorage.js` | #63 |
-| **RF10** | — | — | `src/services/habitService.js` (`getMonthlyReport`), `src/api/router.js` | #65 |
-| **RF11** | — | — | `src/reminders/`, `src/auth/accountRouter.js` | #67 |
+### 3.1 Requisitos Funcionais
+
+Cada linha liga o requisito ao caso de uso, à história, ao código e à suíte de testes (`describe` em `tests/`) que o verifica. Os testes rodam a cada push e PR no job `test` do CI (`.github/workflows/ci.yml`).
+
+| Requisito | Caso de Uso (`casos-de-uso.md`) | User Story (`user-stories.md`) | Módulo de Código (`src/`) | Teste (`tests/`) | Issue |
+| :---: | :---: | :---: | :--- | :--- | :---: |
+| **RF01 / RF08** | UC01 - Cadastrar Hábito | US01 | `services/habitService.js` | `habit.test.js` › HabitService — CRUD, Validações e Check-in; Formato padrão de erro da API | #7, #77 |
+| **RF02** | UC02 - Consultar e Filtrar Hábitos | US02 | `services/habitService.js` | `habit.test.js` › HabitService — CRUD (filtros por categoria, busca e status) | #8 |
+| **RF03 / RF04** | UC03 - Manter Hábito (Editar/Excluir) | US03 | `services/habitService.js` | `habit.test.js` › HabitService — CRUD; API HTTP — Integração das rotas REST | #9 |
+| **RF05** | UC04 - Registrar Check-in Diário | US04 | `services/habitService.js`, `storage/sqliteStorage.js` | `habit.test.js` › HabitService — CRUD (toggle de check-in) | #10 |
+| **RF06 / RF07** | UC05 - Visualizar Estatísticas e Streaks | US05 | `utils/streakCalculator.js` | `habit.test.js` › StreakCalculator — Regras de Ofensiva; HabitService — CRUD (estatísticas) | #11 |
+| **RF09** | — | — | `auth/`, `storage/sqliteStorage.js` | `auth.test.js` › JWT HS256; AuthService; isolamento no SQL; API HTTP — autenticação e isolamento | #63 |
+| **RF10** | — | — | `services/habitService.js` (`getMonthlyReport`), `api/router.js` | `habit.test.js` › Exportação mensal em CSV | #65 |
+| **RF11** | — | — | `reminders/`, `auth/accountRouter.js` | `reminder.test.js` › ReminderService; Configuração do lembrete; preferência de lembrete da conta | #67 |
+
+### 3.2 Requisitos Não Funcionais
+
+| Requisito | Evidência | Onde verificar | Situação |
+| :---: | :--- | :--- | :---: |
+| **RNF01** Desempenho | Nenhuma medição automatizada do tempo de resposta com 1.000 hábitos | — (backlog: baseline de desempenho) | Não verificado |
+| **RNF02** Persistência | Dados sobrevivem ao recarregar o serviço; 4 processos gravando check-ins ao mesmo tempo sem perda | `habit.test.js` › HabitService — Persistência em SQLite | Verificado no CI |
+| **RNF03** Usabilidade e Responsividade | Check-in em 1 clique; layout conferido no Chrome em 1330px, 820px e 390px | PR #60 (verificação manual) | Verificado manualmente |
+| **RNF04** Manutenibilidade | Camadas separadas em `src/` (api, auth, services, storage, reminders); ESLint sem erros; cobertura mínima de 85% das linhas | Jobs `test` (`npm run lint`, `npm run test:coverage`) do CI | Verificado no CI |
+| **RNF05** Confiabilidade e Tratamento de Erros | Status HTTP semânticos e corpo `{ error: { code, message, fields } }`; erro 500 sem mensagem interna | `habit.test.js` › Formato padrão de erro da API; job `test` do CI | Verificado no CI |
+| **RNF06** Portabilidade | Só módulos nativos em execução (mais `nodemailer`); SQLite embutido; imagem Docker | `Dockerfile`, `docker-compose.yml`; CI roda só em Linux | Parcial: Windows e macOS não testados |
