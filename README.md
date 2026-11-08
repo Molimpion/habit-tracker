@@ -26,7 +26,7 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 | Documento | Descrição | Link Direto |
 | :--- | :--- | :--- |
 | **Project Charter** | Justificativa, visão do produto, objetivos SMART, escopo (In/Out) e Stakeholders. | [`docs/project-charter.md`](./docs/project-charter.md) |
-| **Requisitos (RF e RNF)** | Lista numerada e rastreável de 8 Requisitos Funcionais e 6 Requisitos Não Funcionais + Matriz de Rastreabilidade. | [`docs/requisitos.md`](./docs/requisitos.md) |
+| **Requisitos (RF e RNF)** | Lista numerada de 11 Requisitos Funcionais e 6 Não Funcionais, com matriz de rastreabilidade até o código, o teste e a issue. | [`docs/requisitos.md`](./docs/requisitos.md) |
 | **Casos de Uso** | Especificação de atores, diagrama Mermaid e fluxos principais, alternativos e de exceção (`UC01` a `UC05`). | [`docs/casos-de-uso.md`](./docs/casos-de-uso.md) |
 | **User Stories (BDD)** | 5 Histórias de Usuário no formato canônico com Critérios de Aceite explícitos em Gherkin (*Dado/Quando/Então*). | [`docs/user-stories.md`](./docs/user-stories.md) |
 | **Arquitetura e Diagramas** | Diagrama C4 de Componentes, Diagrama de Classes, Máquina de Estados de *Streaks* e Especificação da API REST. | [`docs/arquitetura-e-diagramas.md`](./docs/arquitetura-e-diagramas.md) |
