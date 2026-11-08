@@ -114,6 +114,7 @@ habit-tracker/
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 ├── .gitleaksignore                  # Falsos positivos do gitleaks no histórico (segredo fixo de teste antigo)
 ├── eslint.config.js                 # Regras do ESLint (Node e navegador)
+├── CONTRIBUTING.md                  # Guia de contribuição: Git Flow, commits, testes e release
 ├── LICENSE                          # Licença MIT
 ├── package.json                     # Manifesto do projeto e scripts npm
 └── README.md                        # Documentação principal e guia do projeto
@@ -204,7 +205,9 @@ O desenvolvimento segue o modelo **Git Flow** combinado com **Conventional Commi
 1. Cada issue ganha uma branch `feature/issue-NN-descricao` criada a partir de `develop`.
 2. A branch volta para `develop` por Pull Request, depois do CI verde.
 3. Num marco estável, uma branch `release/vX.Y.Z` sai de `develop`, atualiza a versão no `package.json` e é integrada em `main` por Pull Request.
-4. O merge em `main` recebe uma **tag anotada** SemVer e uma Release no GitHub; a branch de release volta para `develop`.
+4. O merge em `main` recebe uma **tag anotada** SemVer e uma Release no GitHub; depois um PR de `main` para `develop` leva a versão de volta à integração (a branch de release é apagada automaticamente no merge).
+
+O passo a passo completo, com padrão de commits e de testes, está no [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ```mermaid
 gitGraph
