@@ -37,17 +37,29 @@ async function call(window, method, url, body) {
 }
 
 describe('LocalStorageStorage — Adapter de armazenamento do navegador', () => {
-  it('deve retornar null quando ainda não há dados salvos na chave', () => {
-    const storage = new LocalStorageStorage(createWebStorage(), 'habitflow:habits');
-    assert.equal(storage.load(), null);
+  it('deve gravar os hábitos de exemplo só na primeira visita', () => {
+    const webStorage = createWebStorage();
+    new LocalStorageStorage(webStorage, 'habitflow:habits').seedIfNew([{ id: 'hab-1', completedDates: [] }]);
+    new LocalStorageStorage(webStorage, 'habitflow:habits').seedIfNew([{ id: 'hab-2', completedDates: [] }]);
+
+    assert.deepEqual(
+      new LocalStorageStorage(webStorage, 'habitflow:habits').list().map((h) => h.id),
+      ['hab-1']
+    );
   });
 
-  it('deve salvar e recarregar os hábitos na chave informada', () => {
+  it('deve salvar e recarregar os hábitos e check-ins na chave informada', () => {
     const webStorage = createWebStorage();
     const storage = new LocalStorageStorage(webStorage, 'habitflow:habits');
-    storage.save([{ id: 'hab-1' }]);
+    storage.insert({ id: 'hab-1', title: 'Ler', completedDates: [] });
+    storage.addCheckIn('hab-1', '2026-11-07');
+    storage.update({ id: 'hab-1', title: 'Ler 10 páginas', completedDates: [] });
 
-    assert.deepEqual(storage.load(), [{ id: 'hab-1' }]);
+    assert.deepEqual(new LocalStorageStorage(webStorage, 'habitflow:habits').findById('hab-1'), {
+      id: 'hab-1',
+      title: 'Ler 10 páginas',
+      completedDates: ['2026-11-07'],
+    });
     assert.deepEqual([...webStorage.items.keys()], ['habitflow:habits']);
   });
 });

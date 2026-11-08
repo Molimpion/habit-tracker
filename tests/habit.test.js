@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Readable } = require('stream');
+const { spawn } = require('child_process');
 
 const {
   calculateStreaks,
@@ -14,9 +15,26 @@ const {
   ValidationError,
   NotFoundError,
 } = require('../src/services/habitService');
-const { JsonFileStorage } = require('../src/storage/jsonFileStorage');
+const { SqliteStorage } = require('../src/storage/sqliteStorage');
 const { createAppServer } = require('../src/app');
 const { createApiRouter } = require('../src/api/router');
+
+function tempDatabaseFile(prefix) {
+  return path.join(
+    os.tmpdir(),
+    `habitflow-${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
+  );
+}
+
+function createEmptyDatabase(file) {
+  new SqliteStorage(file).close();
+}
+
+function removeDatabase(file) {
+  for (const suffix of ['', '-wal', '-shm']) {
+    fs.rmSync(`${file}${suffix}`, { force: true });
+  }
+}
 
 describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   it('deve retornar streaks zeradas quando não houver check-ins', () => {
@@ -65,7 +83,7 @@ describe('StreakCalculator — Regras de Ofensiva ([RF06])', () => {
   });
 });
 
-describe('HabitService — Persistência em JSON ([RNF02])', () => {
+describe('HabitService — Persistência em SQLite ([RNF02])', () => {
   let tempDir;
 
   beforeEach(() => {
@@ -76,23 +94,49 @@ describe('HabitService — Persistência em JSON ([RNF02])', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('deve criar o diretório e o arquivo com 3 hábitos de exemplo quando ainda não existem', () => {
-    const dataFile = path.join(tempDir, 'nested', 'habits.json');
-    new HabitService(new JsonFileStorage(dataFile));
+  it('deve criar o diretório e o banco com 3 hábitos de exemplo quando ainda não existem', () => {
+    const dataFile = path.join(tempDir, 'nested', 'habitflow.db');
+    new HabitService(new SqliteStorage(dataFile));
 
-    const saved = JSON.parse(fs.readFileSync(dataFile, 'utf-8'));
     assert.deepEqual(
-      saved.map((h) => h.id),
+      new SqliteStorage(dataFile).list().map((h) => h.id),
       ['hab-01-eng-software', 'hab-02-hidratacao', 'hab-03-leitura']
     );
   });
 
-  it('não deve sobrescrever um arquivo de dados já existente', () => {
-    const dataFile = path.join(tempDir, 'habits.json');
-    fs.writeFileSync(dataFile, '[]', 'utf-8');
-    new HabitService(new JsonFileStorage(dataFile));
+  it('não deve recriar os hábitos de exemplo num banco já existente', () => {
+    const dataFile = path.join(tempDir, 'habitflow.db');
+    createEmptyDatabase(dataFile);
+    new HabitService(new SqliteStorage(dataFile));
 
-    assert.equal(fs.readFileSync(dataFile, 'utf-8'), '[]');
+    assert.deepEqual(new SqliteStorage(dataFile).list(), []);
+  });
+
+  it('deve persistir todos os check-ins gravados ao mesmo tempo por processos diferentes', async () => {
+    const dataFile = path.join(tempDir, 'habitflow.db');
+    createEmptyDatabase(dataFile);
+    const { id } = new HabitService(new SqliteStorage(dataFile)).createHabit({ title: 'Correr 5km' });
+    const months = ['01', '02', '03', '04'];
+
+    const writer = (month) => `
+      const { HabitService } = require(${JSON.stringify(path.join(__dirname, '../src/services/habitService'))});
+      const { SqliteStorage } = require(${JSON.stringify(path.join(__dirname, '../src/storage/sqliteStorage'))});
+      const service = new HabitService(new SqliteStorage(${JSON.stringify(dataFile)}));
+      for (let day = 1; day <= 28; day++) {
+        service.toggleCheckIn(${JSON.stringify(id)}, '2026-${month}-' + String(day).padStart(2, '0'));
+      }
+    `;
+    const exitCodes = await Promise.all(
+      months.map(
+        (month) =>
+          new Promise((resolve) => {
+            spawn(process.execPath, ['-e', writer(month)], { stdio: 'ignore' }).on('exit', resolve);
+          })
+      )
+    );
+
+    assert.deepEqual(exitCodes, [0, 0, 0, 0]);
+    assert.equal(new SqliteStorage(dataFile).findById(id).completedDates.length, 4 * 28);
   });
 });
 
@@ -101,18 +145,13 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
   let service;
 
   beforeEach(() => {
-    tempFile = path.join(
-      os.tmpdir(),
-      `habitflow-test-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
-    );
-    fs.writeFileSync(tempFile, '[]', 'utf-8');
-    service = new HabitService(new JsonFileStorage(tempFile));
+    tempFile = tempDatabaseFile('test');
+    createEmptyDatabase(tempFile);
+    service = new HabitService(new SqliteStorage(tempFile));
   });
 
   afterEach(() => {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
+    removeDatabase(tempFile);
   });
 
   it('deve cadastrar um novo hábito válido ([RF01])', () => {
@@ -133,9 +172,9 @@ describe('HabitService — CRUD, Validações e Check-in ([RF01] a [RF08])', () 
     assert.equal(habit.currentStreak, 0);
   });
 
-  it('deve manter o hábito cadastrado ao recarregar o serviço a partir do arquivo ([RNF02])', () => {
+  it('deve manter o hábito cadastrado ao recarregar o serviço a partir do banco ([RNF02])', () => {
     const created = service.createHabit({ title: 'Alongar pela manhã' });
-    const reloaded = JSON.parse(fs.readFileSync(tempFile, 'utf-8'));
+    const reloaded = new HabitService(new SqliteStorage(tempFile)).getAllHabits();
     assert.deepEqual(reloaded.map((h) => h.id), [created.id]);
   });
 
@@ -326,18 +365,13 @@ describe('API HTTP — Integração das rotas REST', () => {
   }
 
   beforeEach(() => {
-    tempFile = path.join(
-      os.tmpdir(),
-      `habitflow-api-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
-    );
-    fs.writeFileSync(tempFile, '[]', 'utf-8');
+    tempFile = tempDatabaseFile('api');
+    createEmptyDatabase(tempFile);
     server = createAppServer(tempFile);
   });
 
   afterEach(() => {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
+    removeDatabase(tempFile);
   });
 
   it('deve responder GET /api/health com status 200 e a versão do package.json', async () => {
@@ -458,19 +492,14 @@ describe('Formato padrão de erro da API ([API-ERR])', () => {
   let handleApiRequest;
 
   beforeEach(() => {
-    tempFile = path.join(
-      os.tmpdir(),
-      `habitflow-err-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
-    );
-    fs.writeFileSync(tempFile, '[]', 'utf-8');
-    service = new HabitService(new JsonFileStorage(tempFile));
+    tempFile = tempDatabaseFile('err');
+    createEmptyDatabase(tempFile);
+    service = new HabitService(new SqliteStorage(tempFile));
     handleApiRequest = createApiRouter({ habitService: service, version: 'test' });
   });
 
   afterEach(() => {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
+    removeDatabase(tempFile);
   });
 
   function request(method, pathname, body) {

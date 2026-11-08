@@ -36,13 +36,7 @@ class NotFoundError extends Error {
 class HabitService {
   constructor(storage) {
     this.storage = storage;
-    this._ensureStorage();
-  }
-
-  _ensureStorage() {
-    if (this.storage.load() === null) {
-      this.storage.save(this._createSeedData());
-    }
+    this.storage.seedIfNew(this._createSeedData());
   }
 
   _createSeedData() {
@@ -78,13 +72,12 @@ class HabitService {
     ];
   }
 
-  _readRawHabits() {
-    this._ensureStorage();
-    return this.storage.load();
-  }
-
-  _writeRawHabits(habits) {
-    this.storage.save(habits);
+  _findOrFail(id) {
+    const found = this.storage.findById(id);
+    if (!found) {
+      throw new NotFoundError('Hábito não encontrado.');
+    }
+    return found;
   }
 
   _enrichHabit(habit, referenceDate = getTodayISO()) {
@@ -101,7 +94,7 @@ class HabitService {
   }
 
   getAllHabits(filters = {}, referenceDate = getTodayISO()) {
-    const habits = this._readRawHabits().map((h) =>
+    const habits = this.storage.list().map((h) =>
       this._enrichHabit(h, referenceDate)
     );
 
@@ -137,12 +130,7 @@ class HabitService {
   }
 
   getHabitById(id, referenceDate = getTodayISO()) {
-    const habits = this._readRawHabits();
-    const found = habits.find((h) => h.id === id);
-    if (!found) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-    return this._enrichHabit(found, referenceDate);
+    return this._enrichHabit(this._findOrFail(id), referenceDate);
   }
 
   createHabit(payload, referenceDate = getTodayISO()) {
@@ -182,21 +170,13 @@ class HabitService {
       createdAt: new Date().toISOString(),
     };
 
-    const habits = this._readRawHabits();
-    habits.push(newHabit);
-    this._writeRawHabits(habits);
+    this.storage.insert(newHabit);
 
     return this._enrichHabit(newHabit, referenceDate);
   }
 
   updateHabit(id, payload, referenceDate = getTodayISO()) {
-    const habits = this._readRawHabits();
-    const index = habits.findIndex((h) => h.id === id);
-    if (index === -1) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-
-    const current = habits[index];
+    const current = this._findOrFail(id);
     const updatedTitle =
       payload.title !== undefined ? payload.title : current.title;
 
@@ -245,21 +225,14 @@ class HabitService {
       targetDaysPerWeek: updatedTarget,
     };
 
-    habits[index] = updatedHabit;
-    this._writeRawHabits(habits);
+    this.storage.update(updatedHabit);
 
     return this._enrichHabit(updatedHabit, referenceDate);
   }
 
   deleteHabit(id) {
-    const habits = this._readRawHabits();
-    const index = habits.findIndex((h) => h.id === id);
-    if (index === -1) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-
-    const [removed] = habits.splice(index, 1);
-    this._writeRawHabits(habits);
+    const removed = this._findOrFail(id);
+    this.storage.remove(id);
     return removed;
   }
 
@@ -271,32 +244,21 @@ class HabitService {
       );
     }
 
-    const habits = this._readRawHabits();
-    const index = habits.findIndex((h) => h.id === id);
-    if (index === -1) {
-      throw new NotFoundError('Hábito não encontrado.');
-    }
-
-    const habit = habits[index];
-    const completedSet = new Set(habit.completedDates || []);
+    const habit = this._findOrFail(id);
 
     let action;
-    if (completedSet.has(dateStr)) {
-      completedSet.delete(dateStr);
+    if (habit.completedDates.includes(dateStr)) {
+      this.storage.removeCheckIn(id, dateStr);
       action = 'removed';
     } else {
-      completedSet.add(dateStr);
+      this.storage.addCheckIn(id, dateStr);
       action = 'added';
     }
-
-    habit.completedDates = Array.from(completedSet).sort();
-    habits[index] = habit;
-    this._writeRawHabits(habits);
 
     return {
       action,
       date: dateStr,
-      habit: this._enrichHabit(habit, referenceDate),
+      habit: this._enrichHabit(this.storage.findById(id), referenceDate),
     };
   }
 
