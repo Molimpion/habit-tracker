@@ -14,7 +14,8 @@ O **HabitFlow** adota uma arquitetura em camadas enxuta, com dois pontos de troc
    - **Modo demonstração (`src/demo/`):** no GitHub Pages, `boot.js` carrega os módulos no navegador e substitui o `fetch` de `/api/*` por `demoFetch.js`, que chama o mesmo roteador.
 3. **Roteador da API (`src/api/router.js`):** função pura `createApiRouter({ habitService, version })` que recebe método, caminho, parâmetros e o corpo da requisição e devolve `{ status, payload }`. Concentra rotas, códigos de status e o formato das mensagens de erro, sem depender de `http`.
 4. **Camada de Negócio (`src/services/habitService.js` & `src/utils/streakCalculator.js`):** isola as validações, as regras de negócio e o algoritmo de cálculo de ofensivas (*streaks*). O `HabitService` recebe o armazenamento por injeção e não conhece arquivo nem navegador.
-5. **Adaptadores de armazenamento (`src/storage/`):** implementam operações por registro (`list`, `findById`, `insert`, `update`, `remove`, `addCheckIn`, `removeCheckIn`) e `seedIfNew(habits)`, que grava os hábitos de exemplo só quando o armazenamento acabou de ser criado.
+5. **Lembretes (`src/reminders/`):** com SMTP configurado, o `server.js` roda o `ReminderService` a cada minuto. A partir de `REMINDER_HOUR`, ele lista quem ativou o lembrete e ainda não recebeu no dia, monta um e-mail com os hábitos pendentes e envia por `nodemailer`. Antes de enviar, reserva o dia no banco com uma atualização condicional (`last_reminder_date`); se o envio falha, devolve a reserva para tentar de novo no minuto seguinte.
+6. **Adaptadores de armazenamento (`src/storage/`):** implementam operações por registro (`list`, `findById`, `insert`, `update`, `remove`, `addCheckIn`, `removeCheckIn`) e `seedIfNew(habits)`, que grava os hábitos de exemplo só quando o armazenamento acabou de ser criado.
    - **`SqliteStorage`:** banco SQLite com o módulo nativo `node:sqlite`, em `data/habitflow.db` ou no caminho de `DATABASE_FILE` (servidor Node). Hábitos e check-ins ficam em tabelas separadas; cada check-in é uma linha, então escritas simultâneas de processos diferentes não se sobrescrevem.
    - **`LocalStorageStorage`:** grava no `localStorage` do navegador (GitHub Pages).
 
@@ -193,6 +194,8 @@ stateDiagram-v2
 | :---: | :--- | :--- | :---: |
 | `POST` | `/api/auth/register` | Cria a conta (`{ name, email, password }`) e devolve `{ token, user }` | `201 Created` |
 | `POST` | `/api/auth/login` | Autentica (`{ email, password }`) e devolve `{ token, user }` | `200 OK` |
+| `GET` | `/api/account` | Dados da conta logada: `{ name, email, remindersEnabled }` | `200 OK` |
+| `PATCH` | `/api/account` | Liga ou desliga o lembrete por e-mail (`{ "remindersEnabled": true }`) | `200 OK` |
 | `GET` | `/api/health` | Verifica integridade e versão da API (pública) | `200 OK` |
 | `GET` | `/api/habits` | Lista hábitos (suporta `?category=`, `?status=completed\|pending` e `?search=`) | `200 OK` |
 | `GET` | `/api/habits/stats` | Retorna estatísticas globais para o Dashboard | `200 OK` |
