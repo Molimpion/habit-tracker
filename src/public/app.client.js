@@ -48,6 +48,9 @@ const elements = {
   userMenu: document.getElementById('userMenu'),
   userName: document.getElementById('userName'),
   logoutBtn: document.getElementById('logoutBtn'),
+  exportMonthInput: document.getElementById('exportMonthInput'),
+  exportBtn: document.getElementById('exportBtn'),
+  exportFeedback: document.getElementById('exportFeedback'),
 };
 
 function readSession() {
@@ -373,11 +376,42 @@ elements.logoutBtn.addEventListener('click', () => {
   showAuthView();
 });
 
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+elements.exportBtn.addEventListener('click', async () => {
+  elements.exportFeedback.hidden = true;
+  const month = elements.exportMonthInput.value;
+  const response = await apiFetch(`/api/habits/export?month=${encodeURIComponent(month)}`);
+  if (!response) {
+    return;
+  }
+  if (!response.ok) {
+    const data = await response.json();
+    elements.exportFeedback.textContent =
+      (data.error && data.error.message) || 'Não foi possível exportar.';
+    elements.exportFeedback.hidden = false;
+    return;
+  }
+
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `habitflow-${month}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
+
 async function loadVersion() {
   const response = await fetch('/api/health');
   const { version } = await response.json();
   elements.appVersion.textContent = `v${version}`;
 }
 
+elements.exportMonthInput.value = currentMonth();
 fetchDashboardAndHabits();
 loadVersion();

@@ -380,6 +380,30 @@ textarea {
   background: var(--surface-raised);
 }
 
+.export {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.export .panel-title {
+  margin-bottom: 12px;
+}
+
+.export-row {
+  display: flex;
+  gap: 8px;
+}
+
+.export-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.export .form-feedback {
+  margin: 12px 0 0;
+}
+
 .list-header {
   display: flex;
   flex-wrap: wrap;

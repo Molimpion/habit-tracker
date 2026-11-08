@@ -149,6 +149,15 @@
               <button type="button" class="btn btn-ghost" id="cancelEditBtn" hidden>Cancelar</button>
             </div>
           </form>
+
+          <div class="export">
+            <h2 class="panel-title">Exportar mês</h2>
+            <div class="export-row">
+              <input type="month" id="exportMonthInput" aria-label="Mês a exportar" />
+              <button type="button" class="btn btn-ghost" id="exportBtn">Baixar CSV</button>
+            </div>
+            <p id="exportFeedback" class="form-feedback error" role="alert" hidden></p>
+          </div>
         </aside>
 
         <section class="panel list-panel" aria-labelledby="listHeading">
