@@ -196,6 +196,7 @@ stateDiagram-v2
 | `GET` | `/api/health` | Verifica integridade e versão da API (pública) | `200 OK` |
 | `GET` | `/api/habits` | Lista hábitos (suporta `?category=`, `?status=completed\|pending` e `?search=`) | `200 OK` |
 | `GET` | `/api/habits/stats` | Retorna estatísticas globais para o Dashboard | `200 OK` |
+| `GET` | `/api/habits/export?month=AAAA-MM` | Baixa o mês em CSV (`data;habito;status`, separado por ponto e vírgula, UTF-8 com BOM). Cada hábito entra do dia em que foi criado (ou do primeiro check-in, se anterior) até hoje | `200 OK` |
 | `GET` | `/api/habits/:id` | Busca detalhes e histórico de um hábito específico | `200 OK` |
 | `POST` | `/api/habits` | Cadastra um novo hábito validado | `201 Created` |
 | `PUT` | `/api/habits/:id` | Atualiza título, descrição, categoria ou meta semanal | `200 OK` |

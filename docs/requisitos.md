@@ -19,6 +19,7 @@ Os Requisitos Funcionais descrevem os comportamentos, funcionalidades e regras d
 | **[RF07]** | Exibir Dashboard de Estatísticas | O sistema deve disponibilizar um resumo consolidado contendo: total de hábitos ativos, total de hábitos concluídos hoje, taxa percentual de conclusão diária e maior ofensiva ativa do usuário. | Média | US05 / Issue #11 |
 | **[RF08]** | Validar Dados de Entrada | O sistema deve validar todas as requisições recebidas na API e no formulário web, retornando mensagens de erro claras (HTTP 400 / feedback visual) quando campos obrigatórios estiverem ausentes ou fora do formato esperado. | Alta | US01 / Issue #7 |
 | **[RF09]** | Autenticar Usuário | O sistema deve permitir criar conta (nome, e-mail único e senha de no mínimo 8 caracteres) e entrar com e-mail e senha, e cada usuário deve ver e alterar somente os próprios hábitos. | Alta | Issue #63 |
+| **[RF10]** | Exportar Mês em CSV | O sistema deve exportar um mês escolhido em CSV com uma linha por hábito por dia, do cadastro do hábito até o dia atual, contendo data, hábito e situação (feito ou pendente). | Média | Issue #65 |
 
 ---
 
@@ -47,3 +48,4 @@ Os Requisitos Não Funcionais definem os atributos de qualidade, restrições t�
 | **RF05** | UC04 - Registrar Check-in Diário | US04 | `src/services/habitService.js` | #10 |
 | **RF06 / RF07** | UC05 - Visualizar Estatísticas e Streaks | US05 | `src/utils/streakCalculator.js` | #11 |
 | **RF09** | — | — | `src/auth/`, `src/storage/sqliteStorage.js` | #63 |
+| **RF10** | — | — | `src/services/habitService.js` (`getMonthlyReport`), `src/api/router.js` | #65 |
