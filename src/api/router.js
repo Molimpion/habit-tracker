@@ -10,8 +10,21 @@ function parseJsonText(raw) {
   } catch {
     const syntaxError = new Error('JSON inválido no corpo da requisição.');
     syntaxError.statusCode = 400;
+    syntaxError.code = 'VALIDATION_ERROR';
     throw syntaxError;
   }
+}
+
+function errorResponse(status, code, message, fields) {
+  const error = fields ? { code, message, fields } : { code, message };
+  return { status, payload: { error } };
+}
+
+function toErrorResponse(error) {
+  if (!error.statusCode || !error.code) {
+    return errorResponse(500, 'INTERNAL_ERROR', 'Erro interno no servidor.');
+  }
+  return errorResponse(error.statusCode, error.code, error.message, error.fields);
 }
 
 function createApiRouter({ habitService, version }) {
@@ -78,19 +91,16 @@ function createApiRouter({ habitService, version }) {
       }
     }
 
-    return { status: 404, payload: { error: 'Endpoint da API não encontrado.' } };
+    return errorResponse(404, 'NOT_FOUND', 'Endpoint da API não encontrado.');
   }
 
   return async function handleApiRequest(request) {
     try {
       return await route(request);
     } catch (error) {
-      return {
-        status: error.statusCode || 500,
-        payload: { error: error.message || 'Erro interno no servidor.' },
-      };
+      return toErrorResponse(error);
     }
   };
 }
 
-module.exports = { createApiRouter, parseJsonText };
+module.exports = { createApiRouter, parseJsonText, errorResponse, toErrorResponse };

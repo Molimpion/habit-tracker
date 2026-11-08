@@ -4,7 +4,12 @@ const path = require('path');
 const { URL } = require('url');
 const { HabitService } = require('./services/habitService');
 const { JsonFileStorage } = require('./storage/jsonFileStorage');
-const { createApiRouter, parseJsonText } = require('./api/router');
+const {
+  createApiRouter,
+  parseJsonText,
+  errorResponse,
+  toErrorResponse,
+} = require('./api/router');
 const { version } = require('../package.json');
 
 const DEFAULT_DATA_FILE = path.join(__dirname, '..', 'data', 'habits.json');
@@ -17,6 +22,10 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
 };
+
+function sendError(res, { status, payload }) {
+  return sendJson(res, status, payload);
+}
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -85,7 +94,7 @@ function createAppServer(customDataFile) {
       const safeFilePath = path.normalize(path.join(publicDir, requestedFile));
 
       if (!safeFilePath.startsWith(publicDir)) {
-        return sendJson(res, 403, { error: 'Acesso negado.' });
+        return sendError(res, errorResponse(403, 'FORBIDDEN', 'Acesso negado.'));
       }
 
       if (fs.existsSync(safeFilePath) && fs.statSync(safeFilePath).isFile()) {
@@ -95,12 +104,9 @@ function createAppServer(customDataFile) {
         return fs.createReadStream(safeFilePath).pipe(res);
       }
 
-      return sendJson(res, 404, { error: 'Recurso não encontrado.' });
+      return sendError(res, errorResponse(404, 'NOT_FOUND', 'Recurso não encontrado.'));
     } catch (error) {
-      const status = error.statusCode || 500;
-      return sendJson(res, status, {
-        error: error.message || 'Erro interno no servidor.',
-      });
+      return sendError(res, toErrorResponse(error));
     }
   };
 

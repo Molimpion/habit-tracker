@@ -8,6 +8,7 @@ const nodeGlobals = {
   console: 'readonly',
   __dirname: 'readonly',
   URL: 'readonly',
+  URLSearchParams: 'readonly',
   Response: 'readonly',
 };
 
