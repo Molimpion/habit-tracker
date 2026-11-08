@@ -23,66 +23,149 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">HabitFlow</span>
       </div>
-      <time class="today" id="todayDateDisplay">Carregando…</time>
+      <div class="topbar-right">
+        <time class="today" id="todayDateDisplay"></time>
+        <div class="user-menu" id="userMenu" hidden>
+          <span class="user-name" id="userName"></span>
+          <button type="button" class="btn btn-ghost btn-small" id="logoutBtn">Sair</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="container">
-    <section class="stats" aria-label="Resumo do dia">
-      <div class="stat">
-        <span class="stat-label">Hoje</span>
-        <strong class="stat-value" id="statCompletedToday">0 / 0</strong>
-        <div class="progress" aria-hidden="true">
-          <div class="progress-fill" id="statProgressBar" style="width: 0%"></div>
-        </div>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Taxa diária</span>
-        <strong class="stat-value" id="statCompletionRate">0%</strong>
-        <span class="stat-hint">dos hábitos concluídos</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Maior ofensiva ativa</span>
-        <strong class="stat-value" id="statActiveStreak">0 dias</strong>
-        <span class="stat-hint">sequência em andamento</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Recorde histórico</span>
-        <strong class="stat-value" id="statBestStreak">0 dias</strong>
-        <span class="stat-hint"><span id="statTotalCheckins">0</span> check-ins no total</span>
+    <section class="auth" id="authView" aria-labelledby="authHeading" hidden>
+      <div class="panel auth-panel">
+        <h1 class="panel-title" id="authHeading">Entrar</h1>
+        <form id="authForm" novalidate>
+          <div class="field" id="nameField" hidden>
+            <label for="nameInput">Nome</label>
+            <input type="text" id="nameInput" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="emailInput">E-mail</label>
+            <input type="email" id="emailInput" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="passwordInput">Senha</label>
+            <input type="password" id="passwordInput" autocomplete="current-password" minlength="8" required />
+          </div>
+
+          <p id="authFeedback" class="form-feedback error" role="alert" hidden></p>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="authSubmitBtn">Entrar</button>
+          </div>
+        </form>
+        <p class="auth-switch">
+          <span id="authSwitchText">Ainda não tem conta?</span>
+          <button type="button" class="link-btn" id="authSwitchBtn">Criar conta</button>
+        </p>
       </div>
     </section>
 
-    <div class="workspace">
-      <aside class="panel form-panel">
-        <h2 class="panel-title" id="formHeading">Novo hábito</h2>
-        <form id="habitForm" novalidate>
-          <input type="hidden" id="habitIdInput" value="" />
-
-          <div class="field">
-            <label for="titleInput">Título</label>
-            <input
-              type="text"
-              id="titleInput"
-              placeholder="Ex.: Estudar Engenharia de Software"
-              required
-              minlength="3"
-            />
+    <div id="appView" hidden>
+      <section class="stats" aria-label="Resumo do dia">
+        <div class="stat">
+          <span class="stat-label">Hoje</span>
+          <strong class="stat-value" id="statCompletedToday">0 / 0</strong>
+          <div class="progress" aria-hidden="true">
+            <div class="progress-fill" id="statProgressBar" style="width: 0%"></div>
           </div>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Taxa diária</span>
+          <strong class="stat-value" id="statCompletionRate">0%</strong>
+          <span class="stat-hint">dos hábitos concluídos</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Maior ofensiva ativa</span>
+          <strong class="stat-value" id="statActiveStreak">0 dias</strong>
+          <span class="stat-hint">sequência em andamento</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Recorde histórico</span>
+          <strong class="stat-value" id="statBestStreak">0 dias</strong>
+          <span class="stat-hint"><span id="statTotalCheckins">0</span> check-ins no total</span>
+        </div>
+      </section>
 
-          <div class="field">
-            <label for="descriptionInput">Descrição <span class="optional">opcional</span></label>
-            <textarea
-              id="descriptionInput"
-              rows="3"
-              placeholder="Ex.: Revisar requisitos e praticar Git Flow"
-            ></textarea>
-          </div>
+      <div class="workspace">
+        <aside class="panel form-panel">
+          <h2 class="panel-title" id="formHeading">Novo hábito</h2>
+          <form id="habitForm" novalidate>
+            <input type="hidden" id="habitIdInput" value="" />
 
-          <div class="field-row">
             <div class="field">
-              <label for="categoryInput">Categoria</label>
-              <select id="categoryInput">
+              <label for="titleInput">Título</label>
+              <input
+                type="text"
+                id="titleInput"
+                placeholder="Ex.: Estudar Engenharia de Software"
+                required
+                minlength="3"
+              />
+            </div>
+
+            <div class="field">
+              <label for="descriptionInput">Descrição <span class="optional">opcional</span></label>
+              <textarea
+                id="descriptionInput"
+                rows="3"
+                placeholder="Ex.: Revisar requisitos e praticar Git Flow"
+              ></textarea>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="categoryInput">Categoria</label>
+                <select id="categoryInput">
+                  <option value="Estudos">Estudos</option>
+                  <option value="Saúde">Saúde</option>
+                  <option value="Produtividade">Produtividade</option>
+                  <option value="Mindfulness">Mindfulness</option>
+                  <option value="Finanças">Finanças</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="targetDaysInput">Meta semanal</label>
+                <input
+                  type="number"
+                  id="targetDaysInput"
+                  min="1"
+                  max="7"
+                  value="5"
+                  required
+                />
+              </div>
+            </div>
+
+            <p id="formFeedback" class="form-feedback" role="alert" hidden></p>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="submitBtn">Adicionar hábito</button>
+              <button type="button" class="btn btn-ghost" id="cancelEditBtn" hidden>Cancelar</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="panel list-panel" aria-labelledby="listHeading">
+          <div class="list-header">
+            <h2 class="panel-title" id="listHeading">Hábitos</h2>
+            <div class="filters">
+              <label class="search">
+                <svg class="icon" aria-hidden="true"><use href="#icon-search" /></svg>
+                <input
+                  type="search"
+                  id="searchFilter"
+                  placeholder="Buscar"
+                  aria-label="Buscar hábito por título ou descrição"
+                />
+              </label>
+              <select id="categoryFilter" aria-label="Filtrar por categoria">
+                <option value="Todas">Todas as categorias</option>
                 <option value="Estudos">Estudos</option>
                 <option value="Saúde">Saúde</option>
                 <option value="Produtividade">Produtividade</option>
@@ -90,62 +173,17 @@
                 <option value="Finanças">Finanças</option>
                 <option value="Outros">Outros</option>
               </select>
-            </div>
-
-            <div class="field">
-              <label for="targetDaysInput">Meta semanal</label>
-              <input
-                type="number"
-                id="targetDaysInput"
-                min="1"
-                max="7"
-                value="5"
-                required
-              />
+              <select id="statusFilter" aria-label="Filtrar por situação do dia">
+                <option value="all">Todos</option>
+                <option value="completed">Concluídos hoje</option>
+                <option value="pending">Pendentes hoje</option>
+              </select>
             </div>
           </div>
 
-          <p id="formFeedback" class="form-feedback" role="alert" hidden></p>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="submitBtn">Adicionar hábito</button>
-            <button type="button" class="btn btn-ghost" id="cancelEditBtn" hidden>Cancelar</button>
-          </div>
-        </form>
-      </aside>
-
-      <section class="panel list-panel" aria-labelledby="listHeading">
-        <div class="list-header">
-          <h2 class="panel-title" id="listHeading">Hábitos</h2>
-          <div class="filters">
-            <label class="search">
-              <svg class="icon" aria-hidden="true"><use href="#icon-search" /></svg>
-              <input
-                type="search"
-                id="searchFilter"
-                placeholder="Buscar"
-                aria-label="Buscar hábito por título ou descrição"
-              />
-            </label>
-            <select id="categoryFilter" aria-label="Filtrar por categoria">
-              <option value="Todas">Todas as categorias</option>
-              <option value="Estudos">Estudos</option>
-              <option value="Saúde">Saúde</option>
-              <option value="Produtividade">Produtividade</option>
-              <option value="Mindfulness">Mindfulness</option>
-              <option value="Finanças">Finanças</option>
-              <option value="Outros">Outros</option>
-            </select>
-            <select id="statusFilter" aria-label="Filtrar por situação do dia">
-              <option value="all">Todos</option>
-              <option value="completed">Concluídos hoje</option>
-              <option value="pending">Pendentes hoje</option>
-            </select>
-          </div>
-        </div>
-
-        <ul id="habitsListContainer" class="habits" aria-live="polite"></ul>
-      </section>
+          <ul id="habitsListContainer" class="habits" aria-live="polite"></ul>
+        </section>
+      </div>
     </div>
   </main>
 
