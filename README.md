@@ -115,6 +115,7 @@ habit-tracker/
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 ├── .gitleaksignore                  # Falsos positivos do gitleaks no histórico (segredo fixo de teste antigo)
 ├── eslint.config.js                 # Regras do ESLint (Node e navegador)
+├── CHANGELOG.md                     # Mudanças de cada versão (Keep a Changelog)
 ├── CONTRIBUTING.md                  # Guia de contribuição: Git Flow, commits, testes e release
 ├── LICENSE                          # Licença MIT
 ├── package.json                     # Manifesto do projeto e scripts npm
@@ -263,6 +264,9 @@ gitGraph
 | `feature/issue-15-readme-documentacao-final` | Docs | Consolidação do `README.md`, badges, guia de execução e revisão final (`Closes #15`). |
 
 ### Histórico de Releases (SemVer)
+
+O detalhe de cada versão está no [`CHANGELOG.md`](./CHANGELOG.md).
+
 - **`v0.1.0`** — *Milestone 1: Especificação e Documentação de Engenharia Completa* (Issues `#1` a `#6`).
 - **`v0.2.0`** — *Milestone 2: Core Backend API REST, Persistência e Cálculo de Streaks* (Issues `#7` a `#12`).
 - **`v1.0.0`** — *Milestone 3: Release Final MVP com Dashboard Web e Testes Automatizados* (Issues `#13` a `#15`).
