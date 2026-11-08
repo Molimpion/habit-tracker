@@ -21,7 +21,7 @@ O GitHub Pages só serve arquivos estáticos, então a versão publicada roda em
 
 ## Documentação de Engenharia (`docs/`)
 
-Todos os artefatos formais de especificação e modelagem encontram-se na pasta `docs/`:
+Todos os artefatos formais de especificação e modelagem encontram-se na pasta `docs/`. O [`docs/README.md`](./docs/README.md) traz o índice com a versão e a data de cada documento e a regra de sincronização com o código.
 
 | Documento | Descrição | Link Direto |
 | :--- | :--- | :--- |
@@ -58,6 +58,7 @@ Todos os artefatos formais de especificação e modelagem encontram-se na pasta 
 ```text
 habit-tracker/
 ├── docs/
+│   ├── README.md                    # Índice com versão e data de cada documento e regra de sincronização
 │   ├── project-charter.md           # Termo de Abertura do Projeto (SMART, Escopo, Stakeholders)
 │   ├── requisitos.md                # Requisitos Funcionais (RF01-RF08) e Não Funcionais (RNF01-RNF06)
 │   ├── casos-de-uso.md              # Especificação de Casos de Uso (UC01-UC05)
