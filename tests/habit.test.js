@@ -1,5 +1,6 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -28,7 +29,7 @@ function tempDatabaseFile(prefix) {
 }
 
 const TEST_USER_ID = 'usr-teste';
-const TEST_SECRET = 'segredo-de-teste-com-mais-de-32-caracteres';
+const TEST_SECRET = crypto.randomBytes(32).toString('hex');
 
 function createUserStore(file) {
   const storage = new SqliteStorage(file);
